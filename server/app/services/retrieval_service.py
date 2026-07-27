@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database.models import Chunk
+from app.schemas.retrieval_schema import RetrievedChunk
 from app.services.embedding_service import EmbeddingService
 
 
@@ -29,7 +30,7 @@ class RetrievalService:
         print("\n🔍 STEP 2 : Top Retrieved Chunks")
         print("=" * 100)
 
-        chunks = []
+        results_list = []
 
         for index, (chunk, score) in enumerate(results, start=1):
 
@@ -39,12 +40,20 @@ class RetrievalService:
             print(f"Similarity Distance : {score:.6f}")
             print(f"Chunk ID            : {chunk.id}")
             print(f"Heading             : {chunk.heading}")
-            preview = chunk.content.replace("\n", " ")[:300]
 
+            preview = chunk.content.replace("\n", " ")[:300]
             print(f"Preview             : {preview}...")
 
-            chunks.append(chunk)
+            results_list.append(
+                RetrievedChunk(
+                    chunk_id=chunk.id,
+                    document_id=chunk.document_id,
+                    heading=chunk.heading,
+                    content=chunk.content,
+                    similarity=float(score),
+                )
+            )
 
         print("=" * 100)
 
-        return chunks
+        return results_list

@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from app.schemas.source_schema import Source
 
 
 class ChatRequest(BaseModel):
@@ -7,3 +8,4 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str
+    sources: list[Source]

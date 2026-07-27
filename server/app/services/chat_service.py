@@ -1,6 +1,7 @@
 from app.services.retrieval_service import RetrievalService
 from app.services.embedding_service import EmbeddingService
 from app.services.gemini_service import GeminiService
+from app.schemas.source_schema import Source
 from sqlalchemy.orm import Session
 import time
 
@@ -22,20 +23,21 @@ class ChatService:
         print(f"\n❓ Question:\n{question}")
 
         # Retrieve relevant chunks
-        chunks = self.retrieval.retrieve(question, db)
+        retrieved_chunks = self.retrieval.retrieve(question, db)
 
-        print(f"\n📚 Retrieved {len(chunks)} Chunks")
+        print(f"\n📚 Retrieved {len(retrieved_chunks)} Chunks")
 
-        for index, chunk in enumerate(chunks, start=1):
+        for index, chunk in enumerate(retrieved_chunks, start=1):
             print("-" * 60)
             print(f"Chunk #{index}")
             print(f"Heading : {chunk.heading}")
             print("Content:")
             print(chunk.content)
+            print(f"Similarity : {chunk.similarity:.4f}")
             print("-" * 60)
 
         # Build context
-        context = "\n\n".join(chunk.content for chunk in chunks)
+        context = "\n\n".join(chunk.content for chunk in retrieved_chunks)
 
         print("\n📄 Final Context")
         print("=" * 80)
@@ -80,4 +82,16 @@ Answer:
         print(f"\n⏱️ Total Execution Time : {elapsed:.2f} seconds")
         print("=" * 80)
 
-        return response
+        sources = [
+            Source(
+                chunk_id=chunk.chunk_id,
+                heading=chunk.heading,
+                similarity=round(chunk.similarity, 4),
+            )
+            for chunk in retrieved_chunks
+        ]
+
+        return {
+            "answer": response,
+            "sources": sources,
+        }
