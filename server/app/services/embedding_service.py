@@ -15,3 +15,11 @@ class EmbeddingService:
         )
 
         return response.embeddings[0].values
+
+    def generate_embeddings_batch(self, texts: list[str]) -> list[list[float]]:
+        response = self.client.models.embed_content(
+            model="gemini-embedding-001",
+            contents=texts,
+        )
+
+        return [e.values for e in response.embeddings]

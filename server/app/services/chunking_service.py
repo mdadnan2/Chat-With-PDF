@@ -21,7 +21,18 @@ class ChunkingService:
             heading_match = self.HEADING_PATTERN.match(line)
 
             if heading_match:
-                # Save previous chunk before starting a new section
+                heading = heading_match.group(2).strip()
+                level = len(heading_match.group(1))
+
+                # If the previous heading had no content,
+                # merge this heading into the same chunk.
+                if current_heading and not any(
+                    content.strip() for content in current_content
+                ):
+                    current_heading += "\n" + heading
+                    continue
+
+                # Save previous chunk
                 if current_heading or any(
                     content.strip() for content in current_content
                 ):
@@ -33,14 +44,14 @@ class ChunkingService:
                         )
                     )
 
-                current_level = len(heading_match.group(1))
-                current_heading = heading_match.group(2).strip()
+                current_heading = heading
+                current_level = level
                 current_content = []
 
             else:
                 current_content.append(line)
 
-        # Save the last chunk
+        # Save last chunk
         if current_heading or any(content.strip() for content in current_content):
             chunks.append(
                 Chunk(

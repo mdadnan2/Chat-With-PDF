@@ -14,6 +14,7 @@ export const uploadService = {
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },
+        timeout: 300000, // 5 minutes for upload + processing
         onUploadProgress: (e) => {
           if (e.total) {
             onProgress?.(Math.round((e.loaded * 100) / e.total));

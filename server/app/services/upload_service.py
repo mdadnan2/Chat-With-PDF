@@ -65,6 +65,12 @@ class UploadService:
         # Parse document
         markdown = self.parser.parse_document(file_path)
 
+        print("=" * 100)
+        print("PARSED MARKDOWN")
+        print("=" * 100)
+        print(markdown)
+        print("=" * 100)
+
         # Chunk document
         chunks = self.chunking.chunk_document(markdown)
 
@@ -80,18 +86,56 @@ class UploadService:
             db.add(document)
             db.flush()
 
-            # Save chunks
+            # ------------------------------------------------------------
+            # Prepare Heading + Content for embeddings
+            # ------------------------------------------------------------
+
+            valid_chunks = []
+            texts_to_embed = []
+
             for index, chunk in enumerate(chunks):
-                if not chunk.content.strip():
+
+                # Skip completely empty chunks
+                if not chunk.heading and not chunk.content.strip():
                     continue
 
-                embedding = self.embedding.generate_embedding(chunk.content)
+                if chunk.heading:
+                    searchable_text = (f"{chunk.heading}\n\n{chunk.content}").strip()
+                else:
+                    searchable_text = chunk.content.strip()
+
+                valid_chunks.append(
+                    (
+                        index,
+                        chunk,
+                        searchable_text,
+                    )
+                )
+
+                texts_to_embed.append(searchable_text)
+
+            # ------------------------------------------------------------
+            # Generate embeddings in batch
+            # ------------------------------------------------------------
+
+            embeddings = self.embedding.generate_embeddings_batch(texts_to_embed)
+
+            # ------------------------------------------------------------
+            # Save chunks
+            # ------------------------------------------------------------
+
+            for (
+                index,
+                chunk,
+                searchable_text,
+            ), embedding in zip(valid_chunks, embeddings):
 
                 db_chunk = Chunk(
                     document_id=document.id,
                     heading=chunk.heading,
                     chunk_index=index,
-                    content=chunk.content,
+                    # Store heading + content together
+                    content=searchable_text,
                     embedding=embedding,
                 )
 
