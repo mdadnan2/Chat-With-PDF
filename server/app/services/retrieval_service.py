@@ -11,7 +11,14 @@ class RetrievalService:
     def __init__(self):
         self.embedding = EmbeddingService()
 
-    def retrieve(self, question: str, db: Session):
+    def retrieve(
+        self,
+        question: str,
+        db: Session,
+        top_k: int = 5,
+        distance_threshold: float = 0.55,
+        document_id: str | None = None,
+    ):
 
         print("\n🔍 STEP 1 : Generating Question Embedding")
         print("-" * 100)
@@ -23,7 +30,7 @@ class RetrievalService:
 
         distance = Chunk.embedding.cosine_distance(question_embedding).label("distance")
 
-        statement = select(Chunk, distance).order_by(distance).limit(5)
+        statement = select(Chunk, distance).order_by(distance).limit(top_k)
 
         results = db.execute(statement).all()
 
@@ -33,6 +40,13 @@ class RetrievalService:
         results_list = []
 
         for index, (chunk, score) in enumerate(results, start=1):
+
+            if score > distance_threshold:
+                print(
+                    f"⛔ Skipping Chunk {chunk.id} "
+                    f"(distance={score:.4f} > threshold={distance_threshold})"
+                )
+                continue
 
             print(f"\nChunk #{index}")
             print("-" * 80)
