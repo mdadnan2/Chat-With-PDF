@@ -10,8 +10,6 @@ class GeminiService:
         self.client = genai.Client(api_key=settings.google_api_key)
 
     def generate_answer(self, prompt: str) -> str:
-        print(f"Using model: {settings.gemini_chat_model}")
-
         response = self.client.models.generate_content(
             model=settings.gemini_chat_model,
             contents=prompt,
@@ -27,10 +25,6 @@ class GeminiService:
 
         if not chunks:
             return []
-
-        print("\n🔄 STEP : Gemini Reranking")
-        print("=" * 100)
-        print(f"Using model: {settings.gemini_chat_model}")
 
         chunk_text = ""
 
@@ -74,13 +68,9 @@ Example:
 
         ranking_text = response.text.strip()
 
-        print("\nGemini Raw Response")
-        print(ranking_text)
-
         numbers = re.findall(r"\d+", ranking_text)[:5]
 
         if not numbers:
-            print("Failed to parse ranking.")
             return chunks
 
         ranked_indexes = [int(n) - 1 for n in numbers]

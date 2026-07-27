@@ -65,12 +65,6 @@ class UploadService:
         # Parse document
         markdown = self.parser.parse_document(file_path)
 
-        print("=" * 100)
-        print("PARSED MARKDOWN")
-        print("=" * 100)
-        print(markdown)
-        print("=" * 100)
-
         # Chunk document
         chunks = self.chunking.chunk_document(markdown)
 
