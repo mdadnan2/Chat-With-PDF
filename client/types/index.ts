@@ -14,14 +14,6 @@ export interface UploadResponse {
   data: UploadMetadata;
 }
 
-export interface ChatRequest {
-  question: string;
-}
-
-export interface ChatResponse {
-  answer: string;
-}
-
 export type MessageRole = "user" | "assistant";
 
 export interface Message {
@@ -29,6 +21,7 @@ export interface Message {
   role: MessageRole;
   content: string;
   timestamp: Date;
+  sources?: string[];
 }
 
 export interface DocumentInfo {
@@ -37,4 +30,57 @@ export interface DocumentInfo {
   size: number;
   pages?: number;
   uploadedAt: string;
+}
+
+// Auth types
+export interface AuthUser {
+  id: string;
+  email: string;
+  full_name?: string;
+}
+
+export interface LoginRequest {
+  username: string; // email
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  full_name?: string;
+}
+
+export interface RegisterResponse {
+  id: string;
+  email: string;
+  full_name?: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+}
+
+// Document types (backend shape)
+export interface Document {
+  id: string;
+  original_filename: string;
+  stored_filename: string;
+  uploaded_at: string;
+}
+
+// Chat types
+export interface ChatRequest {
+  document_id: string;
+  question: string;
+}
+
+export interface ChatResponse {
+  answer: string;
+  sources: string[];
+}
+
+export interface DeleteResponse {
+  success: boolean;
+  message: string;
 }

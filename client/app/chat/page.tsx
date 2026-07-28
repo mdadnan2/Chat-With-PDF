@@ -1,25 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ChatInterface } from "@/components/chat/chat-interface";
-import { DocumentCard } from "@/components/chat/document-card";
+import { DocumentList } from "@/components/chat/document-list";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { useDocument } from "@/providers/document-provider";
-import { FileText } from "lucide-react";
+import { UserMenu } from "@/components/layout/user-menu";
+import { ProtectedRoute } from "@/components/auth/protected-route";
+import { Button } from "@/components/ui/button";
+import { FileText, Plus } from "lucide-react";
 import Link from "next/link";
 
-export default function ChatPage() {
-  const router = useRouter();
-  const { document } = useDocument();
-
-  useEffect(() => {
-    if (!document) router.replace("/upload");
-  }, [document, router]);
-
-  if (!document) return null;
-
+function ChatPageContent() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       {/* Top bar */}
@@ -32,7 +23,10 @@ export default function ChatPage() {
             PDF<span className="text-primary">Chat</span>
           </span>
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <UserMenu />
+        </div>
       </header>
 
       {/* Main layout */}
@@ -42,9 +36,19 @@ export default function ChatPage() {
           initial={{ x: -20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.4 }}
-          className="hidden w-72 shrink-0 overflow-y-auto border-r border-border/50 p-4 lg:block"
+          className="hidden w-72 shrink-0 overflow-y-auto border-r border-border/50 p-4 lg:flex lg:flex-col gap-4"
         >
-          <DocumentCard document={document} />
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Documents
+            </p>
+            <Button asChild variant="ghost" size="icon" className="h-7 w-7">
+              <Link href="/upload" aria-label="Upload new document">
+                <Plus className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </div>
+          <DocumentList />
         </motion.aside>
 
         {/* Chat area */}
@@ -58,5 +62,13 @@ export default function ChatPage() {
         </motion.main>
       </div>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <ProtectedRoute>
+      <ChatPageContent />
+    </ProtectedRoute>
   );
 }

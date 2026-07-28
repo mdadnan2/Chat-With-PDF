@@ -9,7 +9,7 @@ class DocumentResponse(BaseModel):
     id: str
     original_filename: str
     stored_filename: str
-    created_at: datetime
+    uploaded_at: datetime
 
 
 class DocumentListResponse(BaseModel):

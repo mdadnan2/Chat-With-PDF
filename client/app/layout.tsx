@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import { DocumentProvider } from "@/providers/document-provider";
+import { AuthProvider } from "@/providers/auth-provider";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -21,10 +22,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider>
           <QueryProvider>
-            <DocumentProvider>
-              {children}
-              <Toaster position="top-right" richColors closeButton />
-            </DocumentProvider>
+            <AuthProvider>
+              <DocumentProvider>
+                {children}
+                <Toaster position="top-right" richColors closeButton />
+              </DocumentProvider>
+            </AuthProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

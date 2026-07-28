@@ -13,7 +13,7 @@ class DocumentService:
         return (
             self.db.query(Document)
             .filter(Document.user_id == current_user.id)
-            .order_by(Document.created_at.desc())
+            .order_by(Document.uploaded_at.desc())
             .all()
         )
 

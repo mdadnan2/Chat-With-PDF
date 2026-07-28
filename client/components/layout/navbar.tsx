@@ -3,10 +3,14 @@
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
+import { UserMenu } from "./user-menu";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { useAuth } from "@/providers/auth-provider";
 
 export function Navbar() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <motion.header
       initial={{ y: -20, opacity: 0 }}
@@ -35,9 +39,13 @@ export function Navbar() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button asChild size="sm">
-            <Link href="/upload">Get Started</Link>
-          </Button>
+          {isAuthenticated ? (
+            <UserMenu />
+          ) : (
+            <Button asChild size="sm">
+              <Link href="/login">Get Started</Link>
+            </Button>
+          )}
         </div>
       </div>
     </motion.header>

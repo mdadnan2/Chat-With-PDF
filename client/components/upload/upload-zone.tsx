@@ -17,6 +17,13 @@ export function UploadZone() {
   const router = useRouter();
   const { setDocument } = useDocument();
   const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<{ name: string; size: number } | null>(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("pendingFile");
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  });
   const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
@@ -36,6 +43,8 @@ export function UploadZone() {
       return;
     }
     setFile(f);
+    setFilePreview({ name: f.name, size: f.size });
+    sessionStorage.setItem("pendingFile", JSON.stringify({ name: f.name, size: f.size }));
     setError(null);
     setStatus("idle");
     setProgress(0);
@@ -64,6 +73,8 @@ export function UploadZone() {
     try {
       const response = await uploadService.uploadPDF(file, setProgress);
       setStatus("success");
+      sessionStorage.removeItem("pendingFile");
+      sessionStorage.removeItem("showUpload");
       setDocument({
         id: response.data.id,
         name: response.data.original_name,
@@ -82,6 +93,8 @@ export function UploadZone() {
 
   const removeFile = () => {
     setFile(null);
+    setFilePreview(null);
+    sessionStorage.removeItem("pendingFile");
     setError(null);
     setStatus("idle");
     setProgress(0);
@@ -90,7 +103,7 @@ export function UploadZone() {
   return (
     <div className="w-full max-w-xl mx-auto space-y-4">
       <AnimatePresence mode="wait">
-        {!file ? (
+        {!file && !filePreview ? (
           <motion.div
             key="dropzone"
             initial={{ opacity: 0, scale: 0.98 }}
@@ -141,8 +154,8 @@ export function UploadZone() {
                 <FileText className="h-6 w-6 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground truncate">{file.name}</p>
-                <p className="text-sm text-muted-foreground mt-0.5">{formatFileSize(file.size)}</p>
+                <p className="font-medium text-foreground truncate">{file?.name ?? filePreview?.name}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">{formatFileSize(file?.size ?? filePreview?.size ?? 0)}</p>
               </div>
               {status === "idle" && (
                 <button
@@ -173,13 +186,13 @@ export function UploadZone() {
         )}
       </AnimatePresence>
 
-      {file && status !== "success" && (
+      {(file || filePreview) && status !== "success" && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <Button
-            onClick={handleUpload}
+            onClick={file ? handleUpload : () => document.getElementById("file-input")?.click()}
             disabled={status === "uploading"}
             className="w-full"
             size="lg"

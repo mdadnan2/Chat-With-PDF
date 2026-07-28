@@ -7,10 +7,12 @@ import { ChatInput } from "./chat-input";
 import { TypingIndicator } from "./typing-indicator";
 import { EmptyState } from "./empty-state";
 import { chatService } from "@/services/api";
+import { useDocument } from "@/providers/document-provider";
 import { generateId } from "@/lib/utils";
 import type { Message } from "@/types";
 
 export function ChatInterface() {
+  const { document } = useDocument();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +28,7 @@ export function ChatInterface() {
 
   const sendMessage = async () => {
     const question = input.trim();
-    if (!question || isLoading) return;
+    if (!question || isLoading || !document) return;
 
     const userMessage: Message = {
       id: generateId(),
@@ -40,18 +42,21 @@ export function ChatInterface() {
     setIsLoading(true);
 
     try {
-      const response = await chatService.sendMessage({ question });
+      const response = await chatService.sendMessage({
+        document_id: document.id,
+        question,
+      });
       const assistantMessage: Message = {
         id: generateId(),
         role: "assistant",
         content: response.answer,
         timestamp: new Date(),
+        sources: response.sources,
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to get response";
       toast.error(message);
-      // Remove the user message on failure so they can retry
       setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
       setInput(question);
     } finally {
@@ -61,7 +66,6 @@ export function ChatInterface() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
         {messages.length === 0 ? (
           <EmptyState onSuggestion={(text) => setInput(text)} />
@@ -76,13 +80,13 @@ export function ChatInterface() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
       <div className="border-t border-border p-4">
         <ChatInput
           value={input}
           onChange={setInput}
           onSubmit={sendMessage}
           isLoading={isLoading}
+          disabled={!document}
         />
         <p className="text-center text-[11px] text-muted-foreground mt-2">
           Enter to send · Shift+Enter for new line
