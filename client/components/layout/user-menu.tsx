@@ -22,9 +22,7 @@ export function UserMenu() {
 
   if (!user) return null;
 
-  const initials = user.full_name
-    ? user.full_name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-    : user.email.slice(0, 2).toUpperCase();
+  const displayName = user.full_name ?? user.email.split("@")[0];
 
   const handleLogout = () => {
     logout();
@@ -38,10 +36,10 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <button className="flex items-center gap-2 rounded-lg p-1 hover:bg-accent transition-colors outline-none">
           <Avatar className="h-7 w-7">
-            <AvatarFallback className="text-[11px]">{initials}</AvatarFallback>
+            <AvatarFallback className="text-[11px]">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <span className="hidden sm:block text-sm font-medium max-w-[120px] truncate">
-            {user.full_name ?? user.email}
+            {displayName}
           </span>
         </button>
       </DropdownMenuTrigger>

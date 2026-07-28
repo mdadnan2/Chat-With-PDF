@@ -45,6 +45,7 @@ export interface LoginRequest {
 }
 
 export interface RegisterRequest {
+  name?: string;
   email: string;
   password: string;
   full_name?: string;
@@ -53,6 +54,7 @@ export interface RegisterRequest {
 export interface RegisterResponse {
   id: string;
   email: string;
+  name?: string;
   full_name?: string;
 }
 

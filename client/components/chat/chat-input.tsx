@@ -3,7 +3,6 @@
 import { useRef, useEffect } from "react";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 interface ChatInputProps {
@@ -15,45 +14,37 @@ interface ChatInputProps {
 }
 
 export function ChatInput({ value, onChange, onSubmit, isLoading, disabled }: ChatInputProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-resize textarea
   useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
-  }, [value]);
-
-  // Auto-focus on mount
-  useEffect(() => {
-    textareaRef.current?.focus();
+    inputRef.current?.focus();
   }, []);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !isLoading && value.trim()) {
       e.preventDefault();
-      if (!isLoading && value.trim()) onSubmit();
+      onSubmit();
     }
   };
 
   return (
-    <div className="relative flex items-end gap-2 rounded-xl border border-border bg-background p-2 shadow-sm focus-within:ring-1 focus-within:ring-ring transition-shadow">
-      <Textarea
-        ref={textareaRef}
+    <div className="relative flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 shadow-sm focus-within:ring-1 focus-within:ring-ring transition-shadow">
+      <input
+        ref={inputRef}
+        type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Ask anything about your document..."
         disabled={disabled || isLoading}
-        className="min-h-[44px] max-h-[160px] border-0 shadow-none focus-visible:ring-0 resize-none py-2.5 px-2"
+        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="Chat message input"
       />
       <Button
         onClick={onSubmit}
         disabled={!value.trim() || isLoading || disabled}
         size="icon"
-        className={cn("shrink-0 h-9 w-9 rounded-lg transition-all", !value.trim() && "opacity-50")}
+        className={cn("shrink-0 h-8 w-8 rounded-lg transition-all", !value.trim() && "opacity-50")}
         aria-label="Send message"
       >
         {isLoading ? (

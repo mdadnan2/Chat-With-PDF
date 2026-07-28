@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dialog";
 import { useDocuments, useDeleteDocument } from "@/hooks";
 import { useDocument } from "@/providers/document-provider";
-import { formatFileSize } from "@/lib/utils";
 import type { Document } from "@/types";
 import Link from "next/link";
 
@@ -33,8 +32,8 @@ export function DocumentList() {
   const handleSelect = (doc: Document) => {
     setDocument({
       id: doc.id,
-      name: doc.original_name,
-      size: doc.size,
+      name: doc.original_filename,
+      size: 0,
       uploadedAt: doc.uploaded_at,
     });
   };
@@ -103,10 +102,10 @@ export function DocumentList() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-foreground truncate leading-tight">
-                    {doc.original_name}
+                    {doc.original_filename}
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {formatFileSize(doc.size)}
+                    {new Date(doc.uploaded_at).toLocaleDateString()}
                   </p>
                   {isActive && (
                     <Badge variant="success" className="mt-1 text-[10px] px-1.5 py-0">
@@ -135,7 +134,7 @@ export function DocumentList() {
           <DialogHeader>
             <DialogTitle>Delete document?</DialogTitle>
             <DialogDescription>
-              &ldquo;{pendingDelete?.original_name}&rdquo; will be permanently deleted. This action cannot be undone.
+              &ldquo;{pendingDelete?.original_filename}&rdquo; will be permanently deleted. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">

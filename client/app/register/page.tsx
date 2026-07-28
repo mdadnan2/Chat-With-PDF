@@ -39,7 +39,7 @@ function RegisterForm() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      await register({ email: data.email, password: data.password, full_name: data.full_name });
+      await register({ name: data.full_name, email: data.email, password: data.password });
       toast.success("Account created! Please sign in.");
       router.replace("/login");
     } catch (err) {
