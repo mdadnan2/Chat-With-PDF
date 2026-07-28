@@ -1,1 +1,2 @@
-venv/Scripts/python run.py
+source venv/Scripts/activate
+python run.py
