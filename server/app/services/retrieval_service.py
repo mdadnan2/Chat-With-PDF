@@ -1,7 +1,7 @@
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
-from app.database.models import Chunk
+from app.database.models import Chunk, Document
 from app.schemas.retrieval_schema import RetrievedChunk
 from app.services.embedding_service import EmbeddingService
 
@@ -15,16 +15,41 @@ class RetrievalService:
         self,
         question: str,
         db: Session,
+        user_id: str,
+        document_id: str,
         top_k: int = 5,
         distance_threshold: float = 0.55,
-        document_id: str | None = None,
     ):
+
+        document = (
+            db.query(Document)
+            .filter(
+                Document.id == document_id,
+                Document.user_id == user_id,
+            )
+            .first()
+        )
+
+        if document is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Document not found or you don't have access to it.",
+            )
 
         question_embedding = self.embedding.generate_embedding(question)
 
         distance = Chunk.embedding.cosine_distance(question_embedding).label("distance")
 
-        statement = select(Chunk, distance).order_by(distance).limit(top_k)
+        statement = (
+            select(Chunk, distance)
+            .join(Document)
+            .where(
+                Document.id == document_id,
+                Document.user_id == user_id,
+            )
+            .order_by(distance)
+            .limit(top_k)
+        )
 
         results = db.execute(statement).all()
 

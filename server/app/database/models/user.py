@@ -1,8 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
-
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import DateTime, String
-from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
 
@@ -42,4 +41,10 @@ class User(Base):
         DateTime,
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
+    )
+
+    documents = relationship(
+        "Document",
+        back_populates="user",
+        cascade="all, delete-orphan",
     )

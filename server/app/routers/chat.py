@@ -1,26 +1,26 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.database.session import SessionLocal
-from app.schemas.chat_schema import ChatRequest, ChatResponse
-from app.services.chat_service import ChatService
+from app.database.session import get_db
+from app.database.models import User
+from app.dependencies.auth import get_current_user
+from app.schemas.chat_schema import ChatRequest
+from app.services.chat_service import ChatService, ChatResponse
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 
 chat_service = ChatService()
 
 
 @router.post("/", response_model=ChatResponse)
-def chat(request: ChatRequest, db: Session = Depends(get_db)):
-    result = chat_service.chat(request.question, db)
-
-    return ChatResponse(**result)
+def chat(
+    request: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return chat_service.chat(
+        question=request.question,
+        document_id=request.document_id,
+        user_id=current_user.id,
+        db=db,
+    )

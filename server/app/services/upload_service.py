@@ -11,6 +11,9 @@ from app.schemas.upload_schema import UploadMetadata
 from app.services.chunking_service import ChunkingService
 from app.services.embedding_service import EmbeddingService
 from app.services.parser_service import ParserService
+from sqlalchemy.orm import Session
+from app.database.models import Chunk, Document, User
+from sqlalchemy.orm import Session
 
 
 class UploadService:
@@ -55,7 +58,12 @@ class UploadService:
 
         return file_path
 
-    async def upload_file(self, file: UploadFile) -> UploadMetadata:
+    async def upload_file(
+        self,
+        file: UploadFile,
+        current_user: User,
+        db: Session,
+    ) -> UploadMetadata:
         extension = self.validate_file(file)
 
         file_id, stored_name = self.generate_filename(extension)
@@ -68,11 +76,10 @@ class UploadService:
         # Chunk document
         chunks = self.chunking.chunk_document(markdown)
 
-        db = SessionLocal()
-
         try:
             # Save document
             document = Document(
+                user_id=current_user.id,
                 original_filename=file.filename,
                 stored_filename=stored_name,
             )
@@ -140,9 +147,6 @@ class UploadService:
         except Exception:
             db.rollback()
             raise
-
-        finally:
-            db.close()
 
         return UploadMetadata(
             id=file_id,

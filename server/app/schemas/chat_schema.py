@@ -3,6 +3,7 @@ from app.schemas.source_schema import Source
 
 
 class ChatRequest(BaseModel):
+    document_id: str
     question: str
 
 
