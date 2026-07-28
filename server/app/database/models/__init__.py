@@ -1,2 +1,3 @@
-from app.database.models.document import Document
-from app.database.models.chunk import Chunk
+from .user import User
+from .chunk import Chunk
+from .document import Document
