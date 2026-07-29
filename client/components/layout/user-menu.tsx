@@ -23,6 +23,11 @@ export function UserMenu() {
   if (!user) return null;
 
   const displayName = user.full_name ?? user.email.split("@")[0];
+  const formattedName = displayName
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word[0]?.toUpperCase() + word.slice(1))
+    .join(" ");
 
   const handleLogout = () => {
     logout();
@@ -36,27 +41,22 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <button className="flex items-center gap-2 rounded-lg p-1 hover:bg-accent transition-colors outline-none">
           <Avatar className="h-7 w-7">
-            <AvatarFallback className="text-[11px]">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="text-[11px]">
+              {formattedName.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
-          <span className="hidden sm:block text-sm font-medium max-w-[120px] truncate">
-            {displayName}
+          <span className="hidden sm:block text-sm font-medium">
+            {formattedName}
           </span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            {user.full_name && (
-              <p className="text-sm font-medium leading-none">{user.full_name}</p>
-            )}
+            <p className="text-sm font-medium leading-none">{formattedName}</p>
             <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
-          <User className="h-4 w-4" />
-          Profile
-        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleLogout}
