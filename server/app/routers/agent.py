@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from google.genai.errors import ServerError
 from sqlalchemy.orm import Session
 
 from app.database.models import User
@@ -28,4 +29,9 @@ def run_agent(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
+        ) from exc
+    except ServerError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The AI service is temporarily unavailable. Please try again shortly.",
         ) from exc
