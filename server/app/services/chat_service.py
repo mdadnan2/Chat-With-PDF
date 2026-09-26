@@ -1,15 +1,17 @@
-from app.services.retrieval_service import RetrievalService
-from app.services.gemini_service import GeminiService
-from app.schemas.source_schema import Source
 from sqlalchemy.orm import Session
 from app.schemas.chat_schema import ChatResponse
+from app.services.ai_execution_service import (
+    AIExecutionService,
+    ExecutionPolicy,
+    RerankMode,
+    create_default_ai_execution_service,
+)
 
 
 class ChatService:
 
-    def __init__(self):
-        self.retrieval = RetrievalService()
-        self.gemini = GeminiService()
+    def __init__(self, execution: AIExecutionService | None = None):
+        self.execution = execution or create_default_ai_execution_service()
 
     def chat(
         self,
@@ -19,55 +21,34 @@ class ChatService:
         db: Session,
     ):
 
-        # --------------------------------------------------
-        # STEP 1 : Retrieve Relevant Chunks
-        # --------------------------------------------------
-
-        retrieved_chunks = self.retrieval.retrieve(
+        result = self.execution.execute(
             question=question,
-            db=db,
             user_id=user_id,
             document_id=document_id,
-            top_k=10,
-            distance_threshold=0.55,
+            db=db,
+            policy=ExecutionPolicy(
+                top_k=10,
+                retrieval_distance_threshold=0.55,
+                context_chunk_count=5,
+                rerank_mode=RerankMode.WHEN_MULTIPLE_CANDIDATES,
+            ),
+            prompt_builder=self._build_prompt,
         )
 
-        # If no relevant chunks found
-        if not retrieved_chunks:
+        if not result.retrieved_chunks:
             return ChatResponse(
                 answer="I couldn't find any relevant information in the provided document.",
                 sources=[],
             )
 
-        # --------------------------------------------------
-        # STEP 2 : Gemini Reranking
-        # --------------------------------------------------
+        return ChatResponse(
+            answer=result.answer or "",
+            sources=result.sources,
+        )
 
-        try:
-            reranked_chunks = self.gemini.rerank_chunks(
-                question=question,
-                chunks=retrieved_chunks,
-            )
-        except Exception:
-            reranked_chunks = retrieved_chunks
-
-        # --------------------------------------------------
-        # STEP 3 : Select Best Chunks
-        # --------------------------------------------------
-
-        final_chunks = reranked_chunks[:5]
-
-        # --------------------------------------------------
-        # STEP 4 : Build Context
-        # --------------------------------------------------
-
-        context = "\n\n".join(chunk.content for chunk in final_chunks)
-
-        # --------------------------------------------------
-        # STEP 5 : Build Prompt
-        # --------------------------------------------------
-
-        prompt = f"""
+    @staticmethod
+    def _build_prompt(context: str, question: str) -> str:
+        return f"""
 You are a helpful assistant.
 
 Answer ONLY using the context below.
@@ -87,31 +68,3 @@ Question:
 
 Answer:
 """
-
-        # --------------------------------------------------
-        # STEP 6 : Generate Answer
-        # --------------------------------------------------
-
-        response = self.gemini.generate_answer(prompt)
-
-        # --------------------------------------------------
-        # STEP 7 : Build Sources
-        # --------------------------------------------------
-
-        sources = [
-            Source(
-                chunk_id=chunk.chunk_id,
-                heading=chunk.heading,
-                similarity=round(chunk.similarity, 4),
-            )
-            for chunk in final_chunks
-        ]
-
-        # --------------------------------------------------
-        # STEP 8 : Return Response
-        # --------------------------------------------------
-
-        return ChatResponse(
-            answer=response,
-            sources=sources,
-        )

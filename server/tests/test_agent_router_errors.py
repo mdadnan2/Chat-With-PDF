@@ -32,5 +32,8 @@ def test_gemini_server_error_returns_retryable_service_unavailable(monkeypatch):
         )
 
     assert error.value.status_code == 503
-    assert error.value.detail == "The AI service is temporarily unavailable. Please try again shortly."
+    assert (
+        error.value.detail
+        == "The AI service is temporarily unavailable. Please try again shortly."
+    )
     assert "internal provider details" not in error.value.detail

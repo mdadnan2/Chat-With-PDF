@@ -49,6 +49,8 @@ export interface AgentSource {
 export interface AgentVerification {
   verified: boolean;
   confidence: string;
+  status?: "SUPPORTED" | "UNSUPPORTED" | "INSUFFICIENT_EVIDENCE";
+  explanation?: string;
   supported_claims: string[];
   unsupported_claims: string[];
   missing_evidence: string[];

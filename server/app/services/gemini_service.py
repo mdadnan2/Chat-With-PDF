@@ -2,14 +2,14 @@ from google import genai
 from app.config import settings
 import re
 from app.schemas.retrieval_schema import RetrievedChunk
+from app.services.provider_interfaces import GenerationProvider, RerankerProvider
 
 
-class GeminiService:
+class GeminiGenerationProvider(GenerationProvider):
+    def __init__(self, client: genai.Client):
+        self.client = client
 
-    def __init__(self):
-        self.client = genai.Client(api_key=settings.google_api_key)
-
-    def generate_answer(self, prompt: str) -> str:
+    def generate(self, prompt: str) -> str:
         response = self.client.models.generate_content(
             model=settings.gemini_chat_model,
             contents=prompt,
@@ -17,7 +17,12 @@ class GeminiService:
 
         return response.text
 
-    def rerank_chunks(
+
+class GeminiRerankerProvider(RerankerProvider):
+    def __init__(self, client: genai.Client):
+        self.client = client
+
+    def rerank(
         self,
         question: str,
         chunks: list[RetrievedChunk],
@@ -86,3 +91,22 @@ Example:
                 reranked.append(chunk)
 
         return reranked
+
+
+class GeminiService:
+    """Compatibility facade over the separate Gemini generation/reranking adapters."""
+
+    def __init__(self):
+        self.client = genai.Client(api_key=settings.google_api_key)
+        self.generation_provider = GeminiGenerationProvider(self.client)
+        self.reranker_provider = GeminiRerankerProvider(self.client)
+
+    def generate_answer(self, prompt: str) -> str:
+        return self.generation_provider.generate(prompt)
+
+    def rerank_chunks(
+        self,
+        question: str,
+        chunks: list[RetrievedChunk],
+    ) -> list[RetrievedChunk]:
+        return self.reranker_provider.rerank(question, chunks)

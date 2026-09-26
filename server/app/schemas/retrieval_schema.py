@@ -6,4 +6,4 @@ class RetrievedChunk(BaseModel):
     document_id: str
     heading: str
     content: str
-    similarity: float
+    distance: float

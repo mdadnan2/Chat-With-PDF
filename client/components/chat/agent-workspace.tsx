@@ -180,8 +180,8 @@ export function AgentWorkspace() {
                             type="button"
                             onClick={() => handleAgentSelect(agent)}
                             className={`rounded-xl border p-3 text-left transition-all ${isActive
-                                    ? "border-primary/40 bg-primary/5 shadow-sm"
-                                    : "border-border bg-background hover:border-primary/20 hover:bg-muted/40"
+                                ? "border-primary/40 bg-primary/5 shadow-sm"
+                                : "border-border bg-background hover:border-primary/20 hover:bg-muted/40"
                                 }`}
                         >
                             <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -255,8 +255,13 @@ export function AgentWorkspace() {
                     <div className="mb-2 flex items-center justify-between gap-4">
                         <p className="text-sm font-semibold">Agent Result</p>
                         {result.verification && (
-                            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-emerald-600">
-                                {result.verification.verified ? "Verified" : "Needs Evidence"}
+                            <span className={`rounded-full border px-2 py-1 text-[10px] font-medium uppercase tracking-[0.12em] ${result.verification.status === "SUPPORTED"
+                                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                                    : result.verification.status === "UNSUPPORTED"
+                                        ? "border-destructive/30 bg-destructive/10 text-destructive"
+                                        : "border-amber-500/30 bg-amber-500/10 text-amber-600"
+                                }`}>
+                                {result.verification.status ?? (result.verification.verified ? "SUPPORTED" : "INSUFFICIENT_EVIDENCE")}
                             </span>
                         )}
                     </div>
@@ -319,7 +324,7 @@ export function AgentWorkspace() {
                                             className="rounded border border-border bg-background px-2 py-1.5 text-xs"
                                         >
                                             <span className="font-medium">{source.heading || "Document section"}</span>
-                                            <span className="ml-2 text-muted-foreground">similarity {source.similarity}</span>
+                                            <span className="ml-2 text-muted-foreground">cosine distance {source.similarity}</span>
                                         </li>
                                     ))}
                                 </ul>
@@ -327,14 +332,24 @@ export function AgentWorkspace() {
                         ) : null}
 
                         {result.verification && (
-                            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                            <div className={`rounded-lg border p-3 text-xs ${result.verification.status === "SUPPORTED"
+                                    ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300"
+                                    : result.verification.status === "UNSUPPORTED"
+                                        ? "border-destructive/20 bg-destructive/5 text-destructive"
+                                        : "border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-300"
+                                }`}>
                                 <p className="font-semibold uppercase tracking-[0.14em]">Verification</p>
-                                <p className="mt-1">Confidence: {result.verification.confidence}</p>
+                                {result.verification.explanation && (
+                                    <p className="mt-1">{result.verification.explanation}</p>
+                                )}
                                 {result.verification.supported_claims.length > 0 && (
                                     <p className="mt-1">Supported: {result.verification.supported_claims.join("; ")}</p>
                                 )}
                                 {result.verification.unsupported_claims.length > 0 && (
                                     <p className="mt-1">Unsupported: {result.verification.unsupported_claims.join("; ")}</p>
+                                )}
+                                {result.verification.missing_evidence.length > 0 && (
+                                    <p className="mt-1">Missing evidence: {result.verification.missing_evidence.join("; ")}</p>
                                 )}
                             </div>
                         )}

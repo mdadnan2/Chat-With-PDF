@@ -19,9 +19,17 @@ class AgentSource(BaseModel):
     similarity: float
 
 
+class VerificationStatus(str, Enum):
+    SUPPORTED = "SUPPORTED"
+    UNSUPPORTED = "UNSUPPORTED"
+    INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
+
+
 class AgentVerificationResult(BaseModel):
+    status: VerificationStatus = VerificationStatus.INSUFFICIENT_EVIDENCE
+    explanation: str = ""
     verified: bool = False
-    confidence: str = "low"
+    confidence: str = "unrated"
     supported_claims: list[str] = Field(default_factory=list)
     unsupported_claims: list[str] = Field(default_factory=list)
     missing_evidence: list[str] = Field(default_factory=list)

@@ -38,16 +38,18 @@ class RetrievalService:
 
         question_embedding = self.embedding.generate_embedding(question)
 
-        distance = Chunk.embedding.cosine_distance(question_embedding).label("distance")
+        cosine_distance = Chunk.embedding.cosine_distance(question_embedding).label(
+            "distance"
+        )
 
         statement = (
-            select(Chunk, distance)
+            select(Chunk, cosine_distance)
             .join(Document)
             .where(
                 Document.id == document_id,
                 Document.user_id == user_id,
             )
-            .order_by(distance)
+            .order_by(cosine_distance)
             .limit(top_k)
         )
 
@@ -66,7 +68,7 @@ class RetrievalService:
                     document_id=chunk.document_id,
                     heading=chunk.heading,
                     content=chunk.content,
-                    similarity=float(score),
+                    distance=float(score),
                 )
             )
 

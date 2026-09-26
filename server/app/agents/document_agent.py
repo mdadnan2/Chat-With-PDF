@@ -1,14 +1,8 @@
 from __future__ import annotations
 
 from app.agents.base_agent import BaseAgent
-from app.schemas.agent_schema import (
-    AgentRunRequest,
-    AgentRunResponse,
-    AgentSource,
-    AgentVerificationResult,
-)
-from app.services.gemini_service import GeminiService
-from app.services.retrieval_service import RetrievalService
+from app.schemas.agent_schema import AgentRunRequest, AgentRunResponse
+from app.services.ai_execution_service import ExecutionPolicy
 
 
 class DocumentAgent(BaseAgent):
@@ -22,52 +16,29 @@ class DocumentAgent(BaseAgent):
         user_id: str,
         db,
     ) -> AgentRunResponse:
-        retrieval = RetrievalService()
-        gemini = GeminiService()
-
         question = (
             request.question
             or "Extract the most important information from this document."
         )
-        retrieved = retrieval.retrieve(
+        result = self.execution.execute(
             question=question,
-            db=db,
             user_id=user_id,
             document_id=request.document_id,
-            top_k=8,
-            distance_threshold=0.55,
+            db=db,
+            policy=ExecutionPolicy(
+                top_k=8,
+                retrieval_distance_threshold=0.55,
+                context_chunk_count=5,
+            ),
+            prompt_builder=self._build_prompt,
         )
 
-        if not retrieved:
+        if not result.retrieved_chunks:
             raise ValueError(
                 "The document does not contain enough extractable evidence."
             )
 
-        context = "\n\n".join(chunk.content for chunk in retrieved[:5])
-
-        prompt = f"""
-You are a document intelligence assistant.
-Extract structured information using only the content below.
-Return a practical document summary with facts, dates, entities, or action items when present.
-
-Document content:
-{context}
-
-Task:
-{question}
-"""
-
-        answer = gemini.generate_answer(prompt)
-
-        sources = [
-            AgentSource(
-                chunk_id=chunk.chunk_id,
-                heading=chunk.heading,
-                similarity=round(float(chunk.similarity), 4),
-            )
-            for chunk in retrieved[:5]
-        ]
-
+        answer = result.answer or ""
         return AgentRunResponse(
             agent=self.agent_type,
             status="completed",
@@ -78,13 +49,21 @@ Task:
                 "Important sections extracted",
                 "Structured details identified",
                 "Key findings assembled",
-                "Evidence checked",
+                "Sources prepared",
             ],
-            sources=sources,
-            verification=AgentVerificationResult(
-                verified=True,
-                confidence="medium",
-                supported_claims=["Document extraction is based on document evidence."],
-                sources=sources,
-            ),
+            sources=self.sources_for_response(result),
         )
+
+    @staticmethod
+    def _build_prompt(context: str, question: str) -> str:
+        return f"""
+You are a document intelligence assistant.
+Extract structured information using only the content below.
+Return a practical document summary with facts, dates, entities, or action items when present.
+
+Document content:
+{context}
+
+Task:
+{question}
+"""

@@ -11,6 +11,10 @@ from app.agents.summary_agent import SummaryAgent
 from app.agents.verification_agent import VerificationAgent
 from app.database.models import Document
 from app.schemas.agent_schema import AgentRunRequest, AgentRunResponse
+from app.services.ai_execution_service import (
+    AIExecutionService,
+    create_default_ai_execution_service,
+)
 
 
 class AgentType(str, Enum):
@@ -22,7 +26,10 @@ class AgentType(str, Enum):
 
 
 class AgentOrchestrator:
-    """Thin orchestration layer around the existing retrieval and Gemini services."""
+    """Dispatches agent requests through shared execution infrastructure."""
+
+    def __init__(self, execution: AIExecutionService | None = None):
+        self.execution = execution or create_default_ai_execution_service()
 
     def validate_document_access(
         self, user_id: str, document_id: str, document_user_id: str | None
@@ -57,18 +64,18 @@ class AgentOrchestrator:
             raise ValueError("A question is required for this agent.")
 
         if request.agent == AgentType.RESEARCH:
-            return ResearchAgent().run(request, user_id, db)
+            return ResearchAgent(self.execution).run(request, user_id, db)
 
         if request.agent == AgentType.SUMMARY:
-            return SummaryAgent().run(request, user_id, db)
+            return SummaryAgent(self.execution).run(request, user_id, db)
 
         if request.agent == AgentType.ANALYST:
-            return AnalystAgent().run(request, user_id, db)
+            return AnalystAgent(self.execution).run(request, user_id, db)
 
         if request.agent == AgentType.DOCUMENT:
-            return DocumentAgent().run(request, user_id, db)
+            return DocumentAgent(self.execution).run(request, user_id, db)
 
         if request.agent == AgentType.VERIFICATION:
-            return VerificationAgent().run(request, user_id, db)
+            return VerificationAgent(self.execution).run(request, user_id, db)
 
         raise ValueError(f"Unsupported agent type: {request.agent}")
