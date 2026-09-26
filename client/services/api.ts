@@ -1,5 +1,7 @@
 import apiClient from "@/lib/api-client";
 import type {
+  AgentRequest,
+  AgentResponse,
   AuthUser,
   LoginRequest,
   LoginResponse,
@@ -55,6 +57,13 @@ export const uploadService = {
 export const chatService = {
   sendMessage: async (request: ChatRequest): Promise<ChatResponse> => {
     const { data } = await apiClient.post<ChatResponse>("/chat/", request);
+    return data;
+  },
+};
+
+export const agentService = {
+  run: async (request: AgentRequest): Promise<AgentResponse> => {
+    const { data } = await apiClient.post<AgentResponse>("/agents/run", request);
     return data;
   },
 };

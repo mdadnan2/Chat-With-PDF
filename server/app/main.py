@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routers.upload import router as upload_router
 from app.routers.chat import router as chat_router
+from app.routers.agent import router as agent_router
 from app.routers import auth
 from app.routers import document
 
@@ -21,6 +22,7 @@ app.add_middleware(
 
 app.include_router(upload_router, prefix="/api/v1")
 app.include_router(chat_router)
+app.include_router(agent_router)
 app.include_router(auth.router)
 app.include_router(document.router)
 

@@ -22,7 +22,7 @@ export function UserMenu() {
 
   if (!user) return null;
 
-  const displayName = user.full_name ?? user.email.split("@")[0];
+  const displayName = user.name ?? user.full_name ?? user.email.split("@")[0];
   const formattedName = displayName
     .split(" ")
     .filter(Boolean)
@@ -45,7 +45,7 @@ export function UserMenu() {
               {formattedName.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden sm:block text-sm font-medium">
+          <span className="hidden max-w-32 truncate text-sm font-medium sm:block">
             {formattedName}
           </span>
         </button>

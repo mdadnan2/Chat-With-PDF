@@ -21,7 +21,7 @@ import { useDocument } from "@/providers/document-provider";
 import type { Document } from "@/types";
 import Link from "next/link";
 
-export function DocumentList() {
+export function DocumentList({ onSelect }: { onSelect?: () => void }) {
   const router = useRouter();
   const { document: currentDoc, setDocument } = useDocument();
   const { data: documents, isLoading } = useDocuments();
@@ -36,6 +36,7 @@ export function DocumentList() {
       size: 0,
       uploadedAt: doc.uploaded_at,
     });
+    onSelect?.();
   };
 
   const handleDelete = async () => {
@@ -90,11 +91,10 @@ export function DocumentList() {
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
-                className={`group relative flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all ${
-                  isActive
+                className={`group relative flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all ${isActive
                     ? "border-primary/40 bg-primary/5"
                     : "border-transparent hover:border-border hover:bg-muted/50"
-                }`}
+                  }`}
                 onClick={() => handleSelect(doc)}
               >
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">

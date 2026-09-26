@@ -16,12 +16,18 @@ export interface UploadResponse {
 
 export type MessageRole = "user" | "assistant";
 
+export interface ChatSource {
+  chunk_id: number;
+  heading: string;
+  similarity: number;
+}
+
 export interface Message {
   id: string;
   role: MessageRole;
   content: string;
   timestamp: Date;
-  sources?: string[];
+  sources?: ChatSource[];
 }
 
 export interface DocumentInfo {
@@ -32,10 +38,46 @@ export interface DocumentInfo {
   uploadedAt: string;
 }
 
+export type AgentType = "research" | "summary" | "analyst" | "document" | "verification";
+
+export interface AgentSource {
+  chunk_id: number;
+  heading: string;
+  similarity: number;
+}
+
+export interface AgentVerification {
+  verified: boolean;
+  confidence: string;
+  supported_claims: string[];
+  unsupported_claims: string[];
+  missing_evidence: string[];
+  sources: AgentSource[];
+}
+
+export interface AgentRequest {
+  agent: AgentType;
+  document_id: string;
+  question: string;
+  mode?: string;
+}
+
+export interface AgentResponse {
+  agent: AgentType;
+  status: string;
+  answer: string;
+  summary?: string;
+  findings?: string[];
+  activity?: string[];
+  sources: AgentSource[];
+  verification?: AgentVerification;
+}
+
 // Auth types
 export interface AuthUser {
   id: string;
   email: string;
+  name?: string;
   full_name?: string;
 }
 
@@ -79,7 +121,7 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   answer: string;
-  sources: string[];
+  sources: ChatSource[];
 }
 
 export interface DeleteResponse {
