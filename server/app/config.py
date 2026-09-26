@@ -16,6 +16,18 @@ class Settings(BaseSettings):
 
     gemini_chat_model: str
 
+    generation_provider: str = "gemini"
+    reranker_provider: str = "gemini"
+    generation_fallback_provider: str = ""
+
+    openrouter_api_key: str = ""
+    openrouter_model: str = ""
+    groq_api_key: str = ""
+    groq_model: str = ""
+    cohere_api_key: str = ""
+    cohere_rerank_model: str = ""
+    provider_timeout_seconds: float = 30.0
+
     database_url: str
 
     jwt_secret_key: str = Field(alias="JWT_SECRET_KEY")

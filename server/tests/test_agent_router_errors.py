@@ -2,16 +2,17 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
-from google.genai.errors import ServerError
 
 from app.routers import agent
 from app.schemas.agent_schema import AgentRunRequest
+from app.services.provider_errors import ProviderError, ProviderErrorCategory
 
 
-def test_gemini_server_error_returns_retryable_service_unavailable(monkeypatch):
-    provider_error = ServerError(
-        503,
-        {"error": {"message": "internal provider details"}},
+def test_normalized_provider_error_returns_sanitized_service_unavailable(monkeypatch):
+    provider_error = ProviderError(
+        ProviderErrorCategory.UNAVAILABLE,
+        provider="gemini",
+        retryable=True,
     )
 
     class FailingOrchestrator:
@@ -34,6 +35,6 @@ def test_gemini_server_error_returns_retryable_service_unavailable(monkeypatch):
     assert error.value.status_code == 503
     assert (
         error.value.detail
-        == "The AI service is temporarily unavailable. Please try again shortly."
+        == "The AI provider is temporarily unavailable. Please try again shortly."
     )
-    assert "internal provider details" not in error.value.detail
+    assert "gemini" not in error.value.detail

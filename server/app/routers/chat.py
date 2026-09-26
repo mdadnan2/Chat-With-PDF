@@ -6,6 +6,8 @@ from app.database.models import User
 from app.dependencies.auth import get_current_user
 from app.schemas.chat_schema import ChatRequest
 from app.services.chat_service import ChatService, ChatResponse
+from app.services.provider_errors import ProviderError
+from app.utils.provider_http import provider_http_exception
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -18,9 +20,12 @@ def chat(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return chat_service.chat(
-        question=request.question,
-        document_id=request.document_id,
-        user_id=current_user.id,
-        db=db,
-    )
+    try:
+        return chat_service.chat(
+            question=request.question,
+            document_id=request.document_id,
+            user_id=current_user.id,
+            db=db,
+        )
+    except ProviderError as exc:
+        raise provider_http_exception(exc) from exc

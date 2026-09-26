@@ -19,6 +19,7 @@ from app.services.gemini_service import (
     GeminiGenerationProvider,
     GeminiRerankerProvider,
 )
+from app.services.provider_errors import ProviderError, ProviderErrorCategory
 
 
 class FakeRetrievalService:
@@ -159,7 +160,13 @@ def test_reranking_failure_falls_back_to_vector_order():
     chunks = [make_chunk(1, 0.11), make_chunk(2, 0.23)]
     retrieval = FakeRetrievalService(chunks)
     generation = FakeGenerationProvider()
-    reranker = FakeRerankerProvider(error=RuntimeError("provider unavailable"))
+    reranker = FakeRerankerProvider(
+        error=ProviderError(
+            ProviderErrorCategory.UNAVAILABLE,
+            provider="test-reranker",
+            retryable=True,
+        )
+    )
     execution = AIExecutionService(retrieval, generation, reranker)
 
     context = execution.execute(

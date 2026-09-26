@@ -4,6 +4,7 @@ from app.services.ai_execution_service import (
     ExecutionPolicy,
     RerankMode,
 )
+from app.services.provider_interfaces import GenerationResult
 
 
 class FakeRetrievalService:
@@ -105,3 +106,48 @@ def test_shared_execution_skips_reranking_and_generation_for_no_results():
     assert context.metadata.reranking_calls == 0
     assert context.metadata.generation_calls == 0
     assert context.metadata.total_model_calls == 1
+
+
+def test_execution_records_provider_fallback_latency_and_real_usage_metadata():
+    class MetadataGenerationProvider:
+        provider_name = "openrouter"
+        model_name = "configured-model"
+
+        def generate(self, prompt):
+            return "Generated answer"
+
+        def generate_with_metadata(self, prompt):
+            return GenerationResult(
+                text="Generated answer",
+                provider="groq",
+                model="fallback-model",
+                fallback_used=True,
+                provider_error_category="rate_limit",
+                latency_ms=12.5,
+                usage={"prompt_tokens": 17, "completion_tokens": 8},
+            )
+
+    execution = AIExecutionService(
+        FakeRetrievalService([make_chunk(1, 0.2)]),
+        MetadataGenerationProvider(),
+        FakeRerankerProvider([]),
+    )
+
+    context = execution.execute(
+        question="question",
+        user_id="user-1",
+        document_id="document-1",
+        db=object(),
+        policy=ExecutionPolicy(),
+        prompt_builder=lambda text, question: f"{question}\n{text}",
+    )
+
+    assert context.metadata.generation_provider == "groq"
+    assert context.metadata.generation_model == "fallback-model"
+    assert context.metadata.fallback_used is True
+    assert context.metadata.provider_error_category == "rate_limit"
+    assert context.metadata.generation_latency_ms == 12.5
+    assert context.metadata.token_usage == {
+        "prompt_tokens": 17,
+        "completion_tokens": 8,
+    }

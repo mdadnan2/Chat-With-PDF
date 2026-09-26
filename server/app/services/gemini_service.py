@@ -1,26 +1,112 @@
+from time import perf_counter
+
 from google import genai
+from google.genai.errors import APIError
+
 from app.config import settings
 import re
+import httpx
+import requests
 from app.schemas.retrieval_schema import RetrievedChunk
-from app.services.provider_interfaces import GenerationProvider, RerankerProvider
+from app.services.provider_errors import (
+    ProviderError,
+    ProviderErrorCategory,
+    normalize_gemini_error,
+)
+from app.services.provider_interfaces import (
+    GenerationProvider,
+    GenerationResult,
+    RerankerProvider,
+)
 
 
 class GeminiGenerationProvider(GenerationProvider):
+    provider_name = "gemini"
+
     def __init__(self, client: genai.Client):
         self.client = client
+        self.model_name = settings.gemini_chat_model
 
     def generate(self, prompt: str) -> str:
-        response = self.client.models.generate_content(
-            model=settings.gemini_chat_model,
-            contents=prompt,
+        return self.generate_with_metadata(prompt).text
+
+    def generate_with_metadata(self, prompt: str) -> GenerationResult:
+        started = perf_counter()
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+            )
+        except APIError as exc:
+            raise normalize_gemini_error(exc) from exc
+        except (
+            TimeoutError,
+            httpx.TimeoutException,
+            requests.exceptions.Timeout,
+        ):
+            raise ProviderError(
+                ProviderErrorCategory.TIMEOUT,
+                provider=self.provider_name,
+                retryable=True,
+            ) from None
+        except httpx.RequestError:
+            raise ProviderError(
+                ProviderErrorCategory.UNAVAILABLE,
+                provider=self.provider_name,
+                retryable=True,
+            ) from None
+        except requests.exceptions.ConnectionError:
+            raise ProviderError(
+                ProviderErrorCategory.UNAVAILABLE,
+                provider=self.provider_name,
+                retryable=True,
+            ) from None
+
+        try:
+            text = response.text
+        except (AttributeError, ValueError, TypeError) as exc:
+            raise ProviderError(
+                ProviderErrorCategory.INVALID_RESPONSE,
+                provider=self.provider_name,
+            ) from exc
+        if not isinstance(text, str) or not text.strip():
+            raise ProviderError(
+                ProviderErrorCategory.INVALID_RESPONSE,
+                provider=self.provider_name,
+            )
+
+        usage_metadata = getattr(response, "usage_metadata", None)
+        usage = self._usage(usage_metadata)
+        return GenerationResult(
+            text=text,
+            provider=self.provider_name,
+            model=self.model_name,
+            latency_ms=(perf_counter() - started) * 1000,
+            usage=usage,
         )
 
-        return response.text
+    @staticmethod
+    def _usage(metadata) -> dict[str, int] | None:
+        if metadata is None:
+            return None
+        usage = {}
+        for target, source in (
+            ("prompt_tokens", "prompt_token_count"),
+            ("completion_tokens", "candidates_token_count"),
+            ("total_tokens", "total_token_count"),
+        ):
+            value = getattr(metadata, source, None)
+            if isinstance(value, int) and not isinstance(value, bool):
+                usage[target] = value
+        return usage or None
 
 
 class GeminiRerankerProvider(RerankerProvider):
+    provider_name = "gemini"
+
     def __init__(self, client: genai.Client):
         self.client = client
+        self.model_name = settings.gemini_chat_model
 
     def rerank(
         self,
@@ -66,12 +152,49 @@ Example:
 2,1,3,4,5
 """
 
-        response = self.client.models.generate_content(
-            model=settings.gemini_chat_model,
-            contents=prompt,
-        )
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+            )
+        except APIError as exc:
+            raise normalize_gemini_error(exc) from exc
+        except (
+            TimeoutError,
+            httpx.TimeoutException,
+            requests.exceptions.Timeout,
+        ):
+            raise ProviderError(
+                ProviderErrorCategory.TIMEOUT,
+                provider=self.provider_name,
+                retryable=True,
+            ) from None
+        except httpx.RequestError:
+            raise ProviderError(
+                ProviderErrorCategory.UNAVAILABLE,
+                provider=self.provider_name,
+                retryable=True,
+            ) from None
+        except requests.exceptions.ConnectionError:
+            raise ProviderError(
+                ProviderErrorCategory.UNAVAILABLE,
+                provider=self.provider_name,
+                retryable=True,
+            ) from None
 
-        ranking_text = response.text.strip()
+        try:
+            ranking_text = response.text
+        except (AttributeError, ValueError, TypeError) as exc:
+            raise ProviderError(
+                ProviderErrorCategory.INVALID_RESPONSE,
+                provider=self.provider_name,
+            ) from exc
+        if not isinstance(ranking_text, str) or not ranking_text.strip():
+            raise ProviderError(
+                ProviderErrorCategory.INVALID_RESPONSE,
+                provider=self.provider_name,
+            )
+        ranking_text = ranking_text.strip()
 
         numbers = re.findall(r"\d+", ranking_text)[:5]
 

@@ -164,19 +164,29 @@ The main database entities are:
 
 Create a .env file in the server folder before running the app.
 
-| Environment Variable            | Description                               |
-| ------------------------------- | ----------------------------------------- |
-| app_name                        | Application name shown in the API         |
-| app_version                     | API version                               |
-| host                            | Host address for the server               |
-| port                            | Port number for the server                |
-| upload_dir                      | Directory where uploaded files are stored |
-| google_api_key                  | API key for Google Gemini access          |
-| database_url                    | PostgreSQL connection string              |
-| gemini_chat_model               | Gemini chat model name                    |
-| JWT_SECRET_KEY                  | Secret key for signing JWT tokens         |
-| JWT_ALGORITHM                   | JWT signing algorithm                     |
-| JWT_ACCESS_TOKEN_EXPIRE_MINUTES | Access token expiration duration          |
+| Environment Variable            | Description                                                |
+| ------------------------------- | ---------------------------------------------------------- |
+| app_name                        | Application name shown in the API                          |
+| app_version                     | API version                                                |
+| host                            | Host address for the server                                |
+| port                            | Port number for the server                                 |
+| upload_dir                      | Directory where uploaded files are stored                  |
+| google_api_key                  | API key for Google Gemini access                           |
+| database_url                    | PostgreSQL connection string                               |
+| gemini_chat_model               | Gemini chat model name                                     |
+| JWT_SECRET_KEY                  | Secret key for signing JWT tokens                          |
+| JWT_ALGORITHM                   | JWT signing algorithm                                      |
+| JWT_ACCESS_TOKEN_EXPIRE_MINUTES | Access token expiration duration                           |
+| GENERATION_PROVIDER             | Generation provider: gemini (default), openrouter, or groq |
+| RERANKER_PROVIDER               | Reranker provider: gemini (default) or cohere              |
+| GENERATION_FALLBACK_PROVIDER    | Optional single fallback: gemini, openrouter, or groq      |
+| OPENROUTER_API_KEY              | Required when OpenRouter generation is selected            |
+| OPENROUTER_MODEL                | Required OpenRouter model identifier                       |
+| GROQ_API_KEY                    | Required when Groq generation is selected                  |
+| GROQ_MODEL                      | Required Groq model identifier                             |
+| COHERE_API_KEY                  | Required when Cohere reranking is selected                 |
+| COHERE_RERANK_MODEL             | Required Cohere rerank model identifier                    |
+| PROVIDER_TIMEOUT_SECONDS        | Provider HTTP timeout in seconds (default 30)              |
 
 ### Sample .env
 
@@ -186,13 +196,19 @@ app_version=1.0.0
 host=0.0.0.0
 port=8000
 upload_dir=uploads
-google_api_key=your_google_api_key
+GOOGLE_API_KEY=your_google_api_key
 database_url=postgresql://xxxx:xxxx@localhost:5432/chat_with_pdf
 gemini_chat_model=gemini-2.5-flash
+GENERATION_PROVIDER=gemini
+RERANKER_PROVIDER=gemini
 JWT_SECRET_KEY=change-this-secret
 JWT_ALGORITHM=HS256
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
+
+Optional providers are server-side only. Set the selected provider's API key and model variable before choosing it. A fallback provider is optional and uses `GENERATION_FALLBACK_PROVIDER`; it is attempted only for transient provider errors (rate limits, quota, timeout, or temporary unavailability), not configuration/authentication failures. Provider errors returned by the API are normalized and do not include raw SDK responses or credentials.
+
+Embeddings remain separate from generation and reranking: `EmbeddingService` continues to use Gemini `gemini-embedding-001` with the existing pgvector vectors. OpenRouter, Groq, and Cohere are not used for embeddings.
 
 ## ⚙️ Installation
 

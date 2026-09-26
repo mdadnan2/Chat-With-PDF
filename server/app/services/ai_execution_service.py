@@ -2,13 +2,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from time import perf_counter
 from typing import Callable
 
 from sqlalchemy.orm import Session
 
 from app.schemas.retrieval_schema import RetrievedChunk
 from app.schemas.source_schema import Source
-from app.services.provider_interfaces import GenerationProvider, RerankerProvider
+from app.services.provider_errors import ProviderError, ProviderErrorCategory
+from app.services.provider_interfaces import (
+    GenerationProvider,
+    GenerationResult,
+    RerankerProvider,
+)
 from app.services.retrieval_service import RetrievalService
 
 
@@ -42,6 +48,15 @@ class ExecutionMetadata:
     reranking_failures: int = 0
     generation_calls: int = 0
     verification_calls: int = 0
+    generation_provider: str | None = None
+    generation_model: str | None = None
+    reranker_provider: str | None = None
+    reranker_model: str | None = None
+    fallback_used: bool = False
+    provider_error_category: str | None = None
+    generation_latency_ms: float | None = None
+    reranking_latency_ms: float | None = None
+    token_usage: dict[str, int] | None = None
 
     @property
     def total_model_calls(self) -> int:
@@ -96,7 +111,7 @@ class AIExecutionService:
 
         prompt = prompt_builder(context.context_text, question)
         context.metadata.generation_calls = 1
-        context.answer = self.generation.generate(prompt)
+        context.answer = self._generate(prompt, context.metadata)
         return context
 
     def verify_claim(
@@ -124,8 +139,49 @@ class AIExecutionService:
         )
         prompt = prompt_builder(evidence, claim)
         context.metadata.verification_calls = 1
-        context.answer = self.generation.generate(prompt)
+        context.answer = self._generate(prompt, context.metadata)
         return context
+
+    def _generate(self, prompt: str, metadata: ExecutionMetadata) -> str:
+        started = perf_counter()
+        provider = self.generation
+        try:
+            generate_with_metadata = getattr(provider, "generate_with_metadata", None)
+            if callable(generate_with_metadata):
+                result = generate_with_metadata(prompt)
+                if not isinstance(result, GenerationResult):
+                    raise ProviderError(
+                        category=ProviderErrorCategory.INVALID_RESPONSE,
+                        provider=getattr(provider, "provider_name", "unknown"),
+                    )
+            else:
+                text = provider.generate(prompt)
+                if not isinstance(text, str) or not text.strip():
+                    raise ProviderError(
+                        category=ProviderErrorCategory.INVALID_RESPONSE,
+                        provider=getattr(provider, "provider_name", "unknown"),
+                    )
+                result = GenerationResult(
+                    text=text,
+                    provider=getattr(provider, "provider_name", None),
+                    model=getattr(provider, "model_name", None),
+                )
+        except ProviderError as exc:
+            metadata.provider_error_category = exc.category.value
+            raise
+        finally:
+            metadata.generation_latency_ms = (perf_counter() - started) * 1000
+
+        metadata.generation_provider = result.provider
+        metadata.generation_model = result.model
+        metadata.fallback_used = result.fallback_used
+        if result.provider_error_category is not None:
+            metadata.provider_error_category = result.provider_error_category
+        metadata.generation_latency_ms = (
+            result.latency_ms or metadata.generation_latency_ms
+        )
+        metadata.token_usage = result.usage
+        return result.text
 
     def _prepare_context(
         self,
@@ -154,11 +210,21 @@ class AIExecutionService:
         selected = retrieved
         if should_rerank(policy.rerank_mode, retrieved):
             context.metadata.reranking_calls = 1
+            context.metadata.reranker_provider = getattr(
+                self.reranker, "provider_name", None
+            )
+            context.metadata.reranker_model = getattr(self.reranker, "model_name", None)
+            rerank_started = perf_counter()
             try:
                 selected = self.reranker.rerank(question, retrieved)
-            except Exception:
+            except ProviderError as exc:
                 context.metadata.reranking_failures = 1
+                context.metadata.provider_error_category = exc.category.value
                 selected = retrieved
+            finally:
+                context.metadata.reranking_latency_ms = (
+                    perf_counter() - rerank_started
+                ) * 1000
 
         context.selected_chunks = selected[: policy.context_chunk_count]
         context.context_text = "\n\n".join(
@@ -176,11 +242,13 @@ class AIExecutionService:
 
 
 def create_default_ai_execution_service() -> AIExecutionService:
-    from app.services.gemini_service import GeminiService
+    from app.services.provider_factory import (
+        get_generation_provider,
+        get_reranker_provider,
+    )
 
-    gemini = GeminiService()
     return AIExecutionService(
         retrieval=RetrievalService(),
-        generation=gemini.generation_provider,
-        reranker=gemini.reranker_provider,
+        generation=get_generation_provider(),
+        reranker=get_reranker_provider(),
     )
