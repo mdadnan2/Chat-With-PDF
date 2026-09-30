@@ -192,8 +192,9 @@ const AGENT_META: Record<
 export function AgentWorkspace() {
     const { document } = useDocument();
     const resultRef = useRef<HTMLDivElement | null>(null);
+    const [agentMode, setAgentMode] = useState<"automatic" | "manual">("automatic");
     const [selectedAgent, setSelectedAgent] = useState<AgentType>("research");
-    const [agentInput, setAgentInput] = useState(AGENT_META.research.defaults[0]);
+    const [agentInput, setAgentInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [result, setResult] = useState<AgentResponse | null>(null);
 
@@ -217,20 +218,18 @@ export function AgentWorkspace() {
             return;
         }
 
-        const mode =
-            selectedAgent === "summary"
-                ? "executive"
-                : selectedAgent === "analyst"
-                    ? "analysis"
-                    : selectedAgent === "document"
-                        ? "extract"
-                        : undefined;
+        let mode: string | undefined;
+        if (agentMode === "manual") {
+            if (selectedAgent === "summary") mode = "executive";
+            else if (selectedAgent === "analyst") mode = "analysis";
+            else if (selectedAgent === "document") mode = "extract";
+        }
 
         const request: AgentRequest = {
-            agent: selectedAgent,
             document_id: document.id,
             question,
-            mode,
+            ...(agentMode === "manual" ? { agent: selectedAgent } : {}),
+            ...(mode ? { mode } : {}),
         };
 
         setIsLoading(true);
@@ -270,41 +269,63 @@ export function AgentWorkspace() {
                 )}
             </div>
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
-                {(Object.keys(AGENT_META) as AgentType[]).map((agent) => {
-                    const meta = AGENT_META[agent];
-                    const Icon = meta.icon;
-                    const isActive = selectedAgent === agent;
-
-                    return (
+            <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-xs font-medium text-muted-foreground">Agent Mode</p>
+                <div className="inline-flex rounded-lg border border-border bg-background p-1" role="group" aria-label="Agent mode">
+                    {(["automatic", "manual"] as const).map((mode) => (
                         <button
-                            key={agent}
+                            key={mode}
                             type="button"
-                            onClick={() => handleAgentSelect(agent)}
-                            className={`rounded-xl border p-3 text-left transition-all ${isActive
-                                ? "border-primary/40 bg-primary/5 shadow-sm"
-                                : "border-border bg-background hover:border-primary/20 hover:bg-muted/40"
+                            onClick={() => setAgentMode(mode)}
+                            aria-pressed={agentMode === mode}
+                            className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors ${agentMode === mode
+                                ? "bg-primary text-primary-foreground"
+                                : "text-muted-foreground hover:text-foreground"
                                 }`}
                         >
-                            <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                                <Icon className="h-4 w-4" />
-                            </div>
-                            <p className="text-sm font-medium">{meta.label}</p>
-                            <p className="mt-1 text-[11px] text-muted-foreground">{meta.description}</p>
+                            {mode}
                         </button>
-                    );
-                })}
+                    ))}
+                </div>
             </div>
 
+            {agentMode === "manual" && (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+                    {(Object.keys(AGENT_META) as AgentType[]).map((agent) => {
+                        const meta = AGENT_META[agent];
+                        const Icon = meta.icon;
+                        const isActive = selectedAgent === agent;
+
+                        return (
+                            <button
+                                key={agent}
+                                type="button"
+                                onClick={() => handleAgentSelect(agent)}
+                                className={`rounded-xl border p-3 text-left transition-all ${isActive
+                                    ? "border-primary/40 bg-primary/5 shadow-sm"
+                                    : "border-border bg-background hover:border-primary/20 hover:bg-muted/40"
+                                    }`}
+                            >
+                                <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                    <Icon className="h-4 w-4" />
+                                </div>
+                                <p className="text-sm font-medium">{meta.label}</p>
+                                <p className="mt-1 text-[11px] text-muted-foreground">{meta.description}</p>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
             <Card className="mt-4 overflow-hidden border-border/60">
-                <div className={`border-b border-border/60 bg-gradient-to-r ${selectedMeta.accent} p-4`}>
+                <div className={`border-b border-border/60 bg-gradient-to-r ${agentMode === "manual" ? selectedMeta.accent : "from-primary/10 to-muted/20"} p-4`}>
                     <div className="flex items-center justify-between gap-4">
                         <CardTitle className="flex items-center gap-2 text-base">
                             <Sparkles className="h-4 w-4 text-primary" />
-                            {selectedMeta.label}
+                            {agentMode === "manual" ? selectedMeta.label : "Ask AI"}
                         </CardTitle>
                         <span className="rounded-full border border-border bg-background/70 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                            {selectedMeta.modeLabel}
+                            {agentMode === "manual" ? selectedMeta.modeLabel : "Automatic routing"}
                         </span>
                     </div>
                 </div>
@@ -315,25 +336,29 @@ export function AgentWorkspace() {
                         onChange={(event) => setAgentInput(event.target.value)}
                         placeholder={
                             document
-                                ? `${selectedMeta.label} prompt...`
+                                ? agentMode === "manual"
+                                    ? `${selectedMeta.label} prompt...`
+                                    : "Ask something about this document..."
                                 : "Select a document to begin."
                         }
                         disabled={!document || isLoading}
                         className="min-h-[90px] text-sm"
                     />
 
-                    <div className="flex flex-wrap gap-2">
-                        {selectedMeta.defaults.map((example) => (
-                            <button
-                                key={example}
-                                type="button"
-                                onClick={() => setAgentInput(example)}
-                                className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
-                            >
-                                {example}
-                            </button>
-                        ))}
-                    </div>
+                    {agentMode === "manual" && (
+                        <div className="flex flex-wrap gap-2">
+                            {selectedMeta.defaults.map((example) => (
+                                <button
+                                    key={example}
+                                    type="button"
+                                    onClick={() => setAgentInput(example)}
+                                    className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+                                >
+                                    {example}
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     <div className="flex items-center justify-between gap-3">
                         <p className="text-[11px] text-muted-foreground">
@@ -345,7 +370,7 @@ export function AgentWorkspace() {
                                     <Loader2 className="h-4 w-4 animate-spin" /> Running agent...
                                 </>
                             ) : (
-                                `Run ${selectedMeta.label}`
+                                agentMode === "manual" ? `Run ${selectedMeta.label}` : "Run"
                             )}
                         </Button>
                     </div>
@@ -367,6 +392,19 @@ export function AgentWorkspace() {
                             </span>
                         )}
                     </div>
+
+                    {result.routing && (
+                        <div className="mb-4">
+                            <p className="text-xs font-medium text-muted-foreground">
+                                {result.routing.automatic ? "Automatically selected" : "Manually selected"}: {AGENT_META[result.agent].label}
+                            </p>
+                            {result.routing.reason && (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    {result.routing.reason}
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     <div className="space-y-4 text-sm text-foreground">
                         <div className="rounded-lg bg-muted/50 p-3">

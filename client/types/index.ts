@@ -57,8 +57,14 @@ export interface AgentVerification {
   sources: AgentSource[];
 }
 
-export interface AgentRequest {
+export interface AgentRoutingInfo {
   agent: AgentType;
+  reason: string;
+  automatic: boolean;
+}
+
+export interface AgentRequest {
+  agent?: AgentType;
   document_id: string;
   question: string;
   mode?: string;
@@ -73,6 +79,7 @@ export interface AgentResponse {
   activity?: string[];
   sources: AgentSource[];
   verification?: AgentVerification;
+  routing?: AgentRoutingInfo;
 }
 
 // Auth types
