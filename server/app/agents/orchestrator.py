@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from enum import Enum
-
 from sqlalchemy.orm import Session
 
 from app.agents.analyst_agent import AnalystAgent
@@ -10,26 +8,30 @@ from app.agents.research_agent import ResearchAgent
 from app.agents.summary_agent import SummaryAgent
 from app.agents.verification_agent import VerificationAgent
 from app.database.models import Document
-from app.schemas.agent_schema import AgentRunRequest, AgentRunResponse
+from app.schemas.agent_schema import (
+    AgentRoute,
+    AgentRoutingInfo,
+    AgentRunRequest,
+    AgentRunResponse,
+    AgentType,
+)
+from app.services.agent_router import AgentRouter
 from app.services.ai_execution_service import (
     AIExecutionService,
     create_default_ai_execution_service,
 )
 
 
-class AgentType(str, Enum):
-    RESEARCH = "research"
-    SUMMARY = "summary"
-    ANALYST = "analyst"
-    DOCUMENT = "document"
-    VERIFICATION = "verification"
-
-
 class AgentOrchestrator:
     """Dispatches agent requests through shared execution infrastructure."""
 
-    def __init__(self, execution: AIExecutionService | None = None):
+    def __init__(
+        self,
+        execution: AIExecutionService | None = None,
+        router: AgentRouter | None = None,
+    ):
         self.execution = execution or create_default_ai_execution_service()
+        self.router = router or AgentRouter()
 
     def validate_document_access(
         self, user_id: str, document_id: str, document_user_id: str | None
@@ -60,22 +62,37 @@ class AgentOrchestrator:
             document_user_id=document.user_id if document else None,
         )
 
+        if request.agent is None and not request.question.strip():
+            raise ValueError("A question is required for automatic agent routing.")
         if request.question.strip() == "" and request.agent != AgentType.VERIFICATION:
             raise ValueError("A question is required for this agent.")
 
-        if request.agent == AgentType.RESEARCH:
-            return ResearchAgent(self.execution).run(request, user_id, db)
+        automatic = request.agent is None
+        if automatic:
+            route: AgentRoute = self.router.route(request.question)
+            selected_agent = route.agent
+            reason = route.reason
+        else:
+            selected_agent = request.agent
+            reason = "Agent explicitly selected by user."
 
-        if request.agent == AgentType.SUMMARY:
-            return SummaryAgent(self.execution).run(request, user_id, db)
-
-        if request.agent == AgentType.ANALYST:
-            return AnalystAgent(self.execution).run(request, user_id, db)
-
-        if request.agent == AgentType.DOCUMENT:
-            return DocumentAgent(self.execution).run(request, user_id, db)
-
-        if request.agent == AgentType.VERIFICATION:
-            return VerificationAgent(self.execution).run(request, user_id, db)
-
-        raise ValueError(f"Unsupported agent type: {request.agent}")
+        specialist_request = request.model_copy(update={"agent": selected_agent})
+        specialists = {
+            AgentType.RESEARCH: ResearchAgent,
+            AgentType.SUMMARY: SummaryAgent,
+            AgentType.ANALYST: AnalystAgent,
+            AgentType.DOCUMENT: DocumentAgent,
+            AgentType.VERIFICATION: VerificationAgent,
+        }
+        response = specialists[selected_agent](self.execution).run(
+            specialist_request, user_id, db
+        )
+        return response.model_copy(
+            update={
+                "routing": AgentRoutingInfo(
+                    agent=selected_agent,
+                    reason=reason,
+                    automatic=automatic,
+                )
+            }
+        )
