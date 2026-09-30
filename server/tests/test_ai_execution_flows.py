@@ -114,8 +114,24 @@ def test_each_agent_uses_shared_execution_policy(
     assert len(generation.prompts) == 1
     assert result.verification is None
 
-    if agent_type in (AgentType.SUMMARY, AgentType.DOCUMENT):
-        assert result.summary == result.answer
+    if agent_type == AgentType.SUMMARY:
+        assert result.summary is None
+        assert result.activity == [
+            "Document reviewed",
+            "Key sections identified",
+            "Summary generated",
+            "Action items extracted",
+            "Sources prepared",
+        ]
+    elif agent_type == AgentType.DOCUMENT:
+        assert result.summary is None
+        assert result.activity == [
+            "Document reviewed",
+            "Important sections extracted",
+            "Structured details identified",
+            "Key findings assembled",
+            "Sources prepared",
+        ]
 
 
 def test_chat_uses_shared_execution_and_preserves_response_contract():

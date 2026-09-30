@@ -43,7 +43,6 @@ class DocumentAgent(BaseAgent):
             agent=self.agent_type,
             status="completed",
             answer=answer,
-            summary=answer,
             activity=[
                 "Document reviewed",
                 "Important sections extracted",

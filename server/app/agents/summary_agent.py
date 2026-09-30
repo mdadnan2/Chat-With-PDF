@@ -40,7 +40,6 @@ class SummaryAgent(BaseAgent):
             agent=self.agent_type,
             status="completed",
             answer=answer,
-            summary=answer,
             activity=[
                 "Document reviewed",
                 "Key sections identified",

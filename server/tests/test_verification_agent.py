@@ -18,6 +18,8 @@ from app.services.ai_execution_service import (
 
 CLAIM = "Northstar's 2025 revenue was ₹225M."
 EVIDENCE = "Revenue increased from ₹165M in 2024 to ₹225M in 2025."
+NORTHSTAR_CLAIM = "Northstar Technologies reported revenue of 225 million in 2025."
+NORTHSTAR_EVIDENCE = "Northstar Technologies reported revenue of 225 million in 2025."
 
 
 class FakeRetrieval:
@@ -95,7 +97,34 @@ def test_supported_claim_is_verified_and_only_cited_chunks_are_returned():
     assert len(reranker.calls) == 0
     assert "ONLY the provided evidence" in generation.prompts[0]
     assert "Do not use outside knowledge" in generation.prompts[0]
+    assert "JSON array of integers" in generation.prompts[0]
     assert "[chunk_id: 41]" in generation.prompts[0]
+
+
+def test_exact_northstar_claim_accepts_numeric_string_evidence_id():
+    agent, _, _, _ = make_agent(
+        {
+            "status": "SUPPORTED",
+            "explanation": "The document reports revenue of 225 million in 2025.",
+            "evidence_chunk_ids": ["41"],
+        },
+        [make_chunk(content=NORTHSTAR_EVIDENCE)],
+    )
+
+    response = agent.run(
+        AgentRunRequest(
+            agent=AgentType.VERIFICATION,
+            document_id="doc-1",
+            question=NORTHSTAR_CLAIM,
+        ),
+        "user-1",
+        object(),
+    )
+
+    assert response.verification.status == VerificationStatus.SUPPORTED
+    assert response.verification.verified is True
+    assert response.verification.supported_claims == [NORTHSTAR_CLAIM]
+    assert [source.chunk_id for source in response.sources] == [41]
 
 
 @pytest.mark.parametrize(
@@ -256,12 +285,22 @@ def test_no_evidence_does_not_increment_verification_call_count():
     assert context.answer is None
 
 
-def test_fabricated_chunk_references_fail_closed_without_sources():
+@pytest.mark.parametrize(
+    ("status", "evidence_ids"),
+    [
+        ("SUPPORTED", [999]),
+        ("SUPPORTED", [41, 999]),
+        ("SUPPORTED", ["not-a-chunk-id"]),
+        ("SUPPORTED", [True]),
+        ("INSUFFICIENT_EVIDENCE", [999]),
+    ],
+)
+def test_invalid_chunk_references_fail_closed_without_sources(status, evidence_ids):
     agent, _, _, _ = make_agent(
         {
-            "status": "SUPPORTED",
+            "status": status,
             "explanation": "A purported reference supports the claim.",
-            "evidence_chunk_ids": [999],
+            "evidence_chunk_ids": evidence_ids,
         },
         [make_chunk()],
     )
@@ -275,6 +314,10 @@ def test_fabricated_chunk_references_fail_closed_without_sources():
     )
 
     assert response.verification.status == VerificationStatus.INSUFFICIENT_EVIDENCE
+    assert (
+        response.verification.explanation
+        == "The verification result could not be validated against the retrieved evidence."
+    )
     assert response.verification.sources == []
     assert response.sources == []
 
