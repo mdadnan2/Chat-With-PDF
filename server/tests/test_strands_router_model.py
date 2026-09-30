@@ -47,6 +47,7 @@ def test_strands_model_and_agent_are_created_lazily_and_structured_output_is_val
     monkeypatch.setattr(strands_router_model, "_build_model", build_model)
     monkeypatch.setattr(strands_router_model, "Agent", FakeAgent)
     router = strands_router_model.StrandsRouterModel(config=FakeSettings())
+    assert created_models == []
 
     first = router.route("Analyze these measures.")
     second = router.route("Compare these values.")
@@ -60,7 +61,16 @@ def test_strands_model_and_agent_are_created_lazily_and_structured_output_is_val
     assert calls == ["Analyze these measures.", "Compare these values."]
 
 
-def test_strands_invalid_structured_output_fails_closed(monkeypatch):
+@pytest.mark.parametrize(
+    "structured_output",
+    [
+        {"agent": "unknown_agent", "reason": "Invalid."},
+        {"agent": "research"},
+        "not structured output",
+        None,
+    ],
+)
+def test_strands_invalid_structured_output_fails_closed(monkeypatch, structured_output):
     monkeypatch.setattr(strands_router_model, "_build_model", lambda _config: object())
 
     class FakeAgent:
@@ -68,9 +78,7 @@ def test_strands_invalid_structured_output_fails_closed(monkeypatch):
             pass
 
         def __call__(self, *_args, **_kwargs):
-            return SimpleNamespace(
-                structured_output={"agent": "unknown_agent", "reason": "Invalid."}
-            )
+            return SimpleNamespace(structured_output=structured_output)
 
     monkeypatch.setattr(strands_router_model, "Agent", FakeAgent)
 

@@ -17,6 +17,7 @@ _VERIFICATION_PATTERNS = (
 _ANALYST_PATTERNS = (
     r"\b(?:compare|comparison|trend|trends|calculate|calculation|growth rate|year[- ]over[- ]year|analy[sz]e|analysis|pattern|patterns|correlation)\b",
     r"\bhow has\b.{0,80}\bchanged\b",
+    r"\bhow did\b.{0,80}\b(?:change|grow|increase|decrease|evolve)\b",
 )
 _SUMMARY_PATTERNS = (
     r"\b(?:summari[sz]e|summary|executive summary|overview|key takeaways|main takeaways|key points)\b",
@@ -26,12 +27,13 @@ _SUMMARY_PATTERNS = (
 _DOCUMENT_PATTERNS = (
     r"\b(?:extract|list|identify)\b.{0,80}\b(?:dates?|requirements?|entities|sections?|metadata|facts?|fields|faq|details)\b",
     r"\b(?:important dates|functional requirements|retention target)\b",
-    r"\bwhat\s+(?:was|is|are|were)\b",
+    r"\bwhat\s+(?:was|is|are|were)\s+(?:the\s+)?(?:revenue|retention target|target|amount|date|deadline|budget|cost|requirement|owner|location|forecast|threshold)\b",
 )
 _RESEARCH_PATTERNS = (
     r"\bwhat does\b.{0,80}\b(?:document|report|paper|source)\b.{0,80}\bsay about\b",
-    r"\b(?:explain|discuss|describe)\b.{0,80}\b(?:mentioned|discussed|in the document|in the report)\b",
+    r"\b(?:explain|discuss|describe)\b.{0,80}\b(?:mentioned|discussed|in the document|in the report|based on (?:the )?(?:document|report))\b",
     r"\b(?:risks?|challenges?)\b.{0,50}\b(?:mentioned|discussed|in this report|in the document)\b",
+    r"\bwhat\s+(?:are|were)\s+(?:(?:the|company's|companies')\s+)?(?:(?:major|main|biggest)\s+)?(?:risks?|challenges?)\b",
 )
 
 

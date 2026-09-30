@@ -12,7 +12,7 @@ from app.schemas.agent_schema import (
     AgentRunResponse,
     AgentType,
 )
-from app.services.agent_router import AgentRouter
+from app.services.agent_router import AgentRouter, _deterministic_route
 from app.services.provider_errors import ProviderError, ProviderErrorCategory
 
 
@@ -23,10 +23,15 @@ from app.services.provider_errors import ProviderError, ProviderErrorCategory
         ("Give me an executive summary.", AgentType.SUMMARY),
         ("What are the revenue trends from 2023 to 2025?", AgentType.ANALYST),
         ("Compare revenue and customer growth.", AgentType.ANALYST),
+        (
+            "How did revenue growth change over the last three years?",
+            AgentType.ANALYST,
+        ),
         ("Calculate the growth rate.", AgentType.ANALYST),
         ("Extract all important dates from this document.", AgentType.DOCUMENT),
         ("List the functional requirements.", AgentType.DOCUMENT),
         ("What was the revenue in 2025?", AgentType.DOCUMENT),
+        ("What is the retention target?", AgentType.DOCUMENT),
         (
             "Is the claim that revenue reached 300 million supported by the document?",
             AgentType.VERIFICATION,
@@ -40,7 +45,12 @@ from app.services.provider_errors import ProviderError, ProviderErrorCategory
             AgentType.RESEARCH,
         ),
         ("What are the biggest risks mentioned in this report?", AgentType.RESEARCH),
+        ("What are the major risks for the company?", AgentType.RESEARCH),
         ("Explain the major risks discussed in the document.", AgentType.RESEARCH),
+        (
+            "Explain the company's main risks based on the document.",
+            AgentType.RESEARCH,
+        ),
     ],
 )
 def test_deterministic_routes_do_not_call_strands(question, expected):
@@ -53,7 +63,14 @@ def test_deterministic_routes_do_not_call_strands(question, expected):
     assert route.reason
 
 
-def test_ambiguous_question_uses_strands_with_only_the_question():
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Can you help me understand this?",
+        "Tell me what matters here.",
+    ],
+)
+def test_ambiguous_question_uses_strands_with_only_the_question(question):
     calls = []
 
     def strands_route(question):
@@ -62,11 +79,11 @@ def test_ambiguous_question_uses_strands_with_only_the_question():
             agent=AgentType.RESEARCH, reason="A factual lookup is needed."
         )
 
-    question = "Can you help me figure out what matters here?"
     route = AgentRouter(strands_route=strands_route).route(question)
 
     assert route.agent == AgentType.RESEARCH
     assert calls == [question]
+    assert _deterministic_route(question) is None
 
 
 @pytest.mark.parametrize(
@@ -76,6 +93,7 @@ def test_ambiguous_question_uses_strands_with_only_the_question():
         {"agent": "analyst"},
         {"agent": "research", "reason": "   "},
         {"agent": "summary", "reason": 42},
+        "not structured output",
     ],
 )
 def test_invalid_strands_output_fails_with_normalized_error(model_output):
@@ -182,7 +200,7 @@ def test_explicit_agent_bypasses_router(monkeypatch):
 
     class FakeRouter:
         def route(self, _question):
-            raise AssertionError("Manual agent selection must bypass routing")
+            raise AssertionError("Manual agent selection must bypass AgentRouter")
 
     class FakeAnalyst:
         def __init__(self, _execution):
@@ -211,13 +229,23 @@ def test_explicit_agent_bypasses_router(monkeypatch):
     assert response.routing.reason == "Agent explicitly selected by user."
 
 
-def test_ownership_failure_occurs_before_router_call():
-    class FakeRouter:
-        def route(self, _question):
-            raise AssertionError("Unauthorized requests must not be routed")
+def test_ownership_failure_occurs_before_router_or_specialist_call(monkeypatch):
+    calls = []
+    router = AgentRouter(
+        strands_route=lambda question: calls.append(("strands", question))
+    )
+
+    class FakeResearchAgent:
+        def __init__(self, _execution):
+            pass
+
+        def run(self, *_args):
+            calls.append(("specialist",))
+
+    monkeypatch.setattr(orchestrator_module, "ResearchAgent", FakeResearchAgent)
 
     with pytest.raises(ValueError, match="not accessible"):
-        AgentOrchestrator(execution=object(), router=FakeRouter()).run(
+        AgentOrchestrator(execution=object(), router=router).run(
             AgentRunRequest(
                 document_id="doc-1",
                 question="Can you help with this request?",
@@ -225,21 +253,96 @@ def test_ownership_failure_occurs_before_router_call():
             "user-1",
             FakeDatabase(owner_id="user-2"),
         )
+    assert calls == []
 
 
-def test_router_failure_propagates_as_normalized_provider_error():
+@pytest.mark.parametrize(
+    ("question", "agent_type", "specialist_name", "should_use_strands"),
+    [
+        ("Give me the key takeaways.", AgentType.SUMMARY, "SummaryAgent", False),
+        (
+            "Can you help me understand this?",
+            AgentType.DOCUMENT,
+            "DocumentAgent",
+            True,
+        ),
+    ],
+)
+def test_actual_router_orchestrator_integration(
+    monkeypatch, question, agent_type, specialist_name, should_use_strands
+):
+    calls = []
+
+    def strands_route(routed_question):
+        calls.append(("strands", routed_question))
+        return AgentRoute(agent=agent_type, reason="Chosen from the request intent.")
+
+    class FakeSpecialist:
+        def __init__(self, _execution):
+            pass
+
+        def run(self, request, user_id, db):
+            calls.append(("specialist", request.agent, user_id))
+            return AgentRunResponse(
+                agent=request.agent.value,
+                status="completed",
+                answer="Specialist generated this response.",
+            )
+
+    monkeypatch.setattr(orchestrator_module, specialist_name, FakeSpecialist)
+    router = AgentRouter(strands_route=strands_route)
+    response = AgentOrchestrator(execution=object(), router=router).run(
+        AgentRunRequest(document_id="doc-1", question=question),
+        "user-1",
+        FakeDatabase(),
+    )
+
+    expected_calls = (
+        [("strands", question), ("specialist", agent_type, "user-1")]
+        if should_use_strands
+        else [("specialist", agent_type, "user-1")]
+    )
+    assert calls == expected_calls
+    assert response.agent == agent_type.value
+    assert response.routing.agent == agent_type
+    assert response.routing.automatic is True
+    assert response.routing.reason
+    assert response.answer == "Specialist generated this response."
+    assert set(AgentRunResponse.model_fields) == {
+        "agent",
+        "status",
+        "answer",
+        "summary",
+        "findings",
+        "activity",
+        "sources",
+        "verification",
+        "routing",
+    }
+
+
+def test_router_failure_propagates_without_specialist_dispatch(monkeypatch):
+    calls = []
     provider_error = ProviderError(
         ProviderErrorCategory.UNAVAILABLE,
         provider="strands-router",
         retryable=True,
     )
+    router = AgentRouter(
+        strands_route=lambda _question: (_ for _ in ()).throw(provider_error)
+    )
 
-    class FakeRouter:
-        def route(self, _question):
-            raise provider_error
+    class FakeResearchAgent:
+        def __init__(self, _execution):
+            pass
+
+        def run(self, *_args):
+            calls.append(("specialist",))
+
+    monkeypatch.setattr(orchestrator_module, "ResearchAgent", FakeResearchAgent)
 
     with pytest.raises(ProviderError) as error:
-        AgentOrchestrator(execution=object(), router=FakeRouter()).run(
+        AgentOrchestrator(execution=object(), router=router).run(
             AgentRunRequest(
                 document_id="doc-1",
                 question="Can you help with this request?",
@@ -250,6 +353,7 @@ def test_router_failure_propagates_as_normalized_provider_error():
 
     assert error.value is provider_error
     assert error.value.category == ProviderErrorCategory.UNAVAILABLE
+    assert calls == []
 
 
 def test_invalid_agent_route_model_output_is_rejected():
