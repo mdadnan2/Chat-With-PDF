@@ -23,9 +23,7 @@ export function Navbar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
             <FileText className="h-4 w-4 text-primary" />
           </div>
-          <span className="font-semibold text-foreground">
-            PDF<span className="text-primary">Chat</span>
-          </span>
+          <span className="font-semibold text-foreground">Chat with PDF</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">

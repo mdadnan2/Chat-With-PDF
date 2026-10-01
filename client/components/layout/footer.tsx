@@ -10,9 +10,7 @@ export function Footer() {
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
               <FileText className="h-3.5 w-3.5 text-primary" />
             </div>
-            <span className="font-semibold text-sm">
-              PDF<span className="text-primary">Chat</span>
-            </span>
+            <span className="text-sm font-semibold">Chat with PDF</span>
           </Link>
 
           <p className="text-xs text-muted-foreground text-center">
@@ -20,7 +18,7 @@ export function Footer() {
           </p>
 
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} PDFChat
+            © {new Date().getFullYear()} Chat with PDF
           </p>
         </div>
       </div>

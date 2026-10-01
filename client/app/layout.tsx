@@ -12,7 +12,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "PDFChat — Chat With Your Documents",
+  title: "Chat with PDF — Chat with your documents",
   description: "Upload any PDF and get instant AI-powered answers using RAG technology.",
   keywords: ["PDF", "AI", "chat", "RAG", "document", "Gemini"],
 };

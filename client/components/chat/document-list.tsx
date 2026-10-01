@@ -110,15 +110,15 @@ export function DocumentList({ onSelect }: { onSelect?: () => void }) {
       </div>
 
       <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-sm gap-5 p-5 sm:p-6">
+          <DialogHeader className="space-y-2 pr-8">
             <DialogTitle>Delete document?</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="break-words">
               &ldquo;{pendingDelete?.original_filename}&rdquo; will be permanently deleted. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setPendingDelete(null)} disabled={isDeleting}>
+            <Button autoFocus variant="outline" onClick={() => setPendingDelete(null)} disabled={isDeleting}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { FileText, Menu, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DocumentList } from "@/components/chat/document-list";
@@ -48,10 +49,12 @@ function DocumentsPanel({ onSelect }: { onSelect?: () => void }) {
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     const { document } = useDocument();
+    const pathname = usePathname();
+    const isUpload = pathname === "/upload";
 
     return (
         <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background">
-            <header className="z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-background px-3 sm:px-5">
+            <header className="relative z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-background px-3 sm:px-5">
                 <div className="flex min-w-0 items-center gap-2.5">
                     <Button
                         type="button"
@@ -72,13 +75,17 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                     </Link>
                 </div>
 
-                <div className="min-w-0 flex-1 px-2 text-center text-xs text-muted-foreground">
+                {/* Absolutely centered over the full header width */}
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <span
-                        className="mx-auto block max-w-sm truncate font-medium text-foreground/75"
-                        title={document?.name}
-                        aria-label={document?.name ?? "No document selected"}
+                        className={isUpload
+                            ? "text-sm font-semibold tracking-tight text-foreground"
+                            : "max-w-sm truncate text-xs font-medium text-foreground/75"
+                        }
+                        title={!isUpload ? document?.name : undefined}
+                        aria-label={isUpload ? "Add a document" : document?.name ?? "No document selected"}
                     >
-                        {document ? formatDocumentTitle(document.name) : "Choose a document to start"}
+                        {isUpload ? "Add a document" : document ? formatDocumentTitle(document.name) : "Choose a document to start"}
                     </span>
                 </div>
 

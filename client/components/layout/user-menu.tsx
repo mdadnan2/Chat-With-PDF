@@ -81,8 +81,8 @@ export function UserMenu() {
       </DropdownMenu>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-sm gap-5 p-5 sm:p-6">
+          <DialogHeader className="space-y-2 pr-8">
             <DialogTitle>Sign out?</DialogTitle>
             <DialogDescription>Are you sure you want to sign out?</DialogDescription>
           </DialogHeader>

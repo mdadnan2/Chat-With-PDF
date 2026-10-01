@@ -82,7 +82,7 @@ export function HeroSection() {
               <div className="h-2.5 w-2.5 rounded-full bg-green-500/80" />
               <div className="mx-auto flex items-center gap-1.5 rounded-md border border-border/60 bg-background/60 px-3 py-1">
                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span className="text-[11px] text-muted-foreground">PDFChat — AI Document Assistant</span>
+                <span className="text-[11px] text-muted-foreground">Chat with PDF</span>
               </div>
             </div>
 

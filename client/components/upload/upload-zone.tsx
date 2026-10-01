@@ -91,7 +91,7 @@ export function UploadZone({ className }: { className?: string }) {
   };
 
   return (
-    <div className={cn("mx-auto w-full max-w-2xl space-y-4", className)}>
+    <div className={cn("mx-auto w-full space-y-3", className)}>
       <input
         ref={fileInputRef}
         id="file-input"
@@ -113,28 +113,28 @@ export function UploadZone({ className }: { className?: string }) {
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={onDrop}
+            onClick={() => fileInputRef.current?.click()}
             className={cn(
-              "relative flex min-h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed px-5 py-10 text-center font-sans transition-all duration-200 cursor-pointer sm:min-h-72 sm:px-8",
+              "w-full flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-8 text-center font-sans transition-all duration-200 cursor-pointer sm:py-10",
               isDragging
-                ? "border-primary bg-primary/5"
-                : "border-border bg-card hover:border-primary/50 hover:bg-muted/40",
+                ? "border-primary bg-primary/5 scale-[1.01]"
+                : "border-border bg-card hover:border-primary/60 hover:bg-muted/30",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             )}
-            onClick={() => fileInputRef.current?.click()}
           >
             <div className={cn(
-              "mb-4 flex h-16 w-16 items-center justify-center rounded-2xl transition-colors",
+              "mb-4 flex h-14 w-14 items-center justify-center rounded-xl transition-colors duration-200",
               isDragging ? "bg-primary/20" : "bg-muted"
             )}>
-              <Upload className={cn("h-7 w-7 transition-colors", isDragging ? "text-primary" : "text-muted-foreground")} />
+              <Upload className={cn("h-6 w-6 transition-colors duration-200", isDragging ? "text-primary" : "text-muted-foreground")} />
             </div>
-            <p className="font-semibold text-foreground mb-1">
+            <p className="text-base font-semibold text-foreground">
               {isDragging ? "Drop your PDF here" : "Drag & drop your PDF"}
             </p>
-            <p className="text-sm text-muted-foreground mb-4">
-              or click to browse files
-            </p>
-            <p className="text-xs text-muted-foreground">PDF only · Max 50MB</p>
+            <p className="mt-1 text-sm text-muted-foreground">or click to browse files</p>
+            <span className="mt-5 inline-flex items-center rounded-full border border-border bg-muted/60 px-3 py-1 text-xs text-muted-foreground">
+              PDF only · Max 50 MB
+            </span>
           </motion.button>
         ) : (
           <motion.div
@@ -142,59 +142,63 @@ export function UploadZone({ className }: { className?: string }) {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="rounded-2xl border border-border bg-card p-6 space-y-4"
+            className={cn(
+              "rounded-2xl border bg-card p-5 space-y-4 transition-colors",
+              status === "error" ? "border-destructive/50" : status === "success" ? "border-emerald-500/40" : "border-border"
+            )}
           >
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                <FileText className="h-6 w-6 text-primary" />
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors",
+                status === "success" ? "bg-emerald-500/10" : status === "error" ? "bg-destructive/10" : "bg-primary/10"
+              )}>
+                {status === "success"
+                  ? <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  : status === "error"
+                  ? <AlertCircle className="h-5 w-5 text-destructive" />
+                  : <FileText className="h-5 w-5 text-primary" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="truncate font-medium text-foreground" title={file.name} aria-label={file.name}>{file.name}</p>
-                <p className="text-sm text-muted-foreground mt-0.5">{formatFileSize(file.size)}</p>
+                <p className="truncate text-sm font-medium text-foreground" title={file.name}>{file.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{formatFileSize(file.size)}</p>
               </div>
               {status !== "uploading" && status !== "success" && (
                 <button
                   type="button"
                   onClick={removeFile}
-                  className="rounded p-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label="Remove file"
                 >
                   <X className="h-4 w-4" />
                 </button>
               )}
-              {status === "error" && <AlertCircle className="h-5 w-5 text-destructive shrink-0" />}
             </div>
 
             {status === "uploading" && (
-              <div className="space-y-2" role="status" aria-live="polite">
+              <div className="space-y-1.5" role="status" aria-live="polite">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Uploading...</span>
+                  <span>Uploading…</span>
                   <span>{Math.min(progress, 99)}%</span>
                 </div>
                 <Progress value={Math.min(progress, 99)} aria-label="Upload progress" />
               </div>
             )}
 
-      {status === "success" && (
-              <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-300" role="status" aria-live="polite">
-                <CheckCircle2 className="h-4 w-4" /> Upload complete. Opening your chat...
-              </div>
+            {status === "success" && (
+              <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400" role="status" aria-live="polite">
+                Upload complete — opening your chat…
+              </p>
             )}
 
-            {error && (
-              <p role="alert" className="text-sm text-destructive flex items-center gap-1.5">
-                <AlertCircle className="h-3.5 w-3.5" /> {error}
-              </p>
+            {error && status === "error" && (
+              <p role="alert" className="text-sm text-destructive">{error}</p>
             )}
           </motion.div>
         )}
       </AnimatePresence>
 
       {file && status !== "success" && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
           <Button
             onClick={handleUpload}
             disabled={status === "uploading"}
@@ -204,12 +208,12 @@ export function UploadZone({ className }: { className?: string }) {
             {status === "uploading" ? (
               <>
                 <span className="h-4 w-4 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin" />
-                Uploading...
+                Uploading…
               </>
             ) : (
               <>
                 <Upload className="h-4 w-4" />
-                Upload & Start Chatting
+                {status === "error" ? "Try Again" : "Upload & Start Chatting"}
               </>
             )}
           </Button>
