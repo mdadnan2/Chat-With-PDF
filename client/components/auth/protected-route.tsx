@@ -17,7 +17,7 @@ export function ProtectedRoute({ children, guestOnly = false }: ProtectedRoutePr
   useEffect(() => {
     if (loading) return;
     if (guestOnly && isAuthenticated) {
-      router.replace("/upload");
+      router.replace("/chat");
     } else if (!guestOnly && !isAuthenticated) {
       router.replace("/login");
     }

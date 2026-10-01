@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { MotionConfig } from "framer-motion";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import { DocumentProvider } from "@/providers/document-provider";
@@ -20,16 +21,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ThemeProvider>
-          <QueryProvider>
-            <AuthProvider>
-              <DocumentProvider>
-                {children}
-                <Toaster position="top-right" richColors closeButton />
-              </DocumentProvider>
-            </AuthProvider>
-          </QueryProvider>
-        </ThemeProvider>
+        <MotionConfig reducedMotion="user">
+          <ThemeProvider>
+            <QueryProvider>
+              <AuthProvider>
+                <DocumentProvider>
+                  {children}
+                  <Toaster position="top-right" richColors closeButton />
+                </DocumentProvider>
+              </AuthProvider>
+            </QueryProvider>
+          </ThemeProvider>
+        </MotionConfig>
       </body>
     </html>
   );

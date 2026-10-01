@@ -14,21 +14,21 @@ const steps = [
     icon: Cpu,
     step: "02",
     title: "AI processes it",
-    description: "Our RAG pipeline chunks, embeds, and indexes your document for semantic search.",
+    description: "We prepare the document so relevant details can support your answers.",
   },
   {
     icon: MessageSquare,
     step: "03",
     title: "Start chatting",
-    description: "Ask questions in natural language and get accurate, sourced answers instantly.",
+    description: "Ask questions naturally and get answers grounded in the document.",
   },
 ];
 
 export function HowItWorksSection() {
   return (
-    <section id="how-it-works" className="py-24 sm:py-32 bg-muted/20">
+    <section id="how-it-works" className="bg-muted/20 py-16 sm:py-20">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
+        <div className="mb-10 text-center sm:mb-12">
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -53,14 +53,14 @@ export function HowItWorksSection() {
             transition={{ delay: 0.2 }}
             className="mt-4 text-muted-foreground"
           >
-            Three simple steps to unlock your document's knowledge.
+            Three simple steps to explore your document.
           </motion.p>
         </div>
 
         <div className="relative grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-8">
           {/* Connector line — sits between icon centers */}
           <div className="absolute top-[28px] left-[calc(16.66%+28px)] right-[calc(16.66%+28px)] hidden h-px md:block">
-            <div className="h-full w-full bg-gradient-to-r from-primary/40 via-primary/60 to-primary/40" />
+            <div className="h-full w-full bg-border" />
           </div>
 
           {steps.map((step, i) => (

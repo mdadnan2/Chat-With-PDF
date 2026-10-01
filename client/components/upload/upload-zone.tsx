@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, FileText, X, CheckCircle2, AlertCircle } from "lucide-react";
@@ -13,17 +13,11 @@ import { useDocument } from "@/providers/document-provider";
 
 const MAX_SIZE = 50 * 1024 * 1024; // 50MB
 
-export function UploadZone() {
+export function UploadZone({ className }: { className?: string }) {
   const router = useRouter();
   const { setDocument } = useDocument();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState<{ name: string; size: number } | null>(() => {
-    if (typeof window !== "undefined") {
-      const saved = sessionStorage.getItem("pendingFile");
-      return saved ? JSON.parse(saved) : null;
-    }
-    return null;
-  });
   const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
@@ -43,8 +37,6 @@ export function UploadZone() {
       return;
     }
     setFile(f);
-    setFilePreview({ name: f.name, size: f.size });
-    sessionStorage.setItem("pendingFile", JSON.stringify({ name: f.name, size: f.size }));
     setError(null);
     setStatus("idle");
     setProgress(0);
@@ -63,6 +55,7 @@ export function UploadZone() {
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (selected) handleFile(selected);
+    e.target.value = "";
   };
 
   const handleUpload = async () => {
@@ -72,8 +65,6 @@ export function UploadZone() {
 
     try {
       const response = await uploadService.uploadPDF(file, setProgress);
-      setStatus("success");
-      sessionStorage.removeItem("pendingFile");
       sessionStorage.removeItem("showUpload");
       setDocument({
         id: response.data.id,
@@ -81,8 +72,9 @@ export function UploadZone() {
         size: response.data.size,
         uploadedAt: response.data.uploaded_at,
       });
+      setStatus("success");
       toast.success("PDF uploaded successfully!");
-      setTimeout(() => router.push("/chat"), 800);
+      window.setTimeout(() => router.push("/chat"), 900);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Upload failed";
       setStatus("error");
@@ -93,18 +85,27 @@ export function UploadZone() {
 
   const removeFile = () => {
     setFile(null);
-    setFilePreview(null);
-    sessionStorage.removeItem("pendingFile");
     setError(null);
     setStatus("idle");
     setProgress(0);
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto space-y-4">
+    <div className={cn("mx-auto w-full max-w-2xl space-y-4", className)}>
+      <input
+        ref={fileInputRef}
+        id="file-input"
+        type="file"
+        accept=".pdf,application/pdf"
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={onInputChange}
+      />
       <AnimatePresence mode="wait">
-        {!file && !filePreview ? (
-          <motion.div
+        {!file ? (
+          <motion.button
+            type="button"
             key="dropzone"
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -113,20 +114,14 @@ export function UploadZone() {
             onDragLeave={() => setIsDragging(false)}
             onDrop={onDrop}
             className={cn(
-              "relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-12 text-center transition-all duration-200 cursor-pointer",
+              "relative flex min-h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed px-5 py-10 text-center font-sans transition-all duration-200 cursor-pointer sm:min-h-72 sm:px-8",
               isDragging
-                ? "border-primary bg-primary/5 scale-[1.01]"
-                : "border-border hover:border-primary/50 hover:bg-muted/50"
+                ? "border-primary bg-primary/5"
+                : "border-border bg-card hover:border-primary/50 hover:bg-muted/40",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             )}
-            onClick={() => document.getElementById("file-input")?.click()}
+            onClick={() => fileInputRef.current?.click()}
           >
-            <input
-              id="file-input"
-              type="file"
-              accept=".pdf,application/pdf"
-              className="hidden"
-              onChange={onInputChange}
-            />
             <div className={cn(
               "mb-4 flex h-16 w-16 items-center justify-center rounded-2xl transition-colors",
               isDragging ? "bg-primary/20" : "bg-muted"
@@ -140,7 +135,7 @@ export function UploadZone() {
               or click to browse files
             </p>
             <p className="text-xs text-muted-foreground">PDF only · Max 50MB</p>
-          </motion.div>
+          </motion.button>
         ) : (
           <motion.div
             key="file-preview"
@@ -154,31 +149,40 @@ export function UploadZone() {
                 <FileText className="h-6 w-6 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground truncate">{file?.name ?? filePreview?.name}</p>
-                <p className="text-sm text-muted-foreground mt-0.5">{formatFileSize(file?.size ?? filePreview?.size ?? 0)}</p>
+                <p className="truncate font-medium text-foreground" title={file.name} aria-label={file.name}>{file.name}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">{formatFileSize(file.size)}</p>
               </div>
-              {status === "idle" && (
+              {status !== "uploading" && status !== "success" && (
                 <button
+                  type="button"
                   onClick={removeFile}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="rounded p-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label="Remove file"
                 >
                   <X className="h-4 w-4" />
                 </button>
               )}
-              {status === "success" && <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />}
               {status === "error" && <AlertCircle className="h-5 w-5 text-destructive shrink-0" />}
             </div>
 
             {status === "uploading" && (
-              <div className="space-y-2">
-                <Progress value={progress} />
-                <p className="text-xs text-muted-foreground text-right">{progress}%</p>
+              <div className="space-y-2" role="status" aria-live="polite">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Uploading...</span>
+                  <span>{Math.min(progress, 99)}%</span>
+                </div>
+                <Progress value={Math.min(progress, 99)} aria-label="Upload progress" />
+              </div>
+            )}
+
+      {status === "success" && (
+              <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-300" role="status" aria-live="polite">
+                <CheckCircle2 className="h-4 w-4" /> Upload complete. Opening your chat...
               </div>
             )}
 
             {error && (
-              <p className="text-sm text-destructive flex items-center gap-1.5">
+              <p role="alert" className="text-sm text-destructive flex items-center gap-1.5">
                 <AlertCircle className="h-3.5 w-3.5" /> {error}
               </p>
             )}
@@ -186,13 +190,13 @@ export function UploadZone() {
         )}
       </AnimatePresence>
 
-      {(file || filePreview) && status !== "success" && (
+      {file && status !== "success" && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <Button
-            onClick={file ? handleUpload : () => document.getElementById("file-input")?.click()}
+            onClick={handleUpload}
             disabled={status === "uploading"}
             className="w-full"
             size="lg"

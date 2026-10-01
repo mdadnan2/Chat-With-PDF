@@ -28,6 +28,12 @@ export interface Message {
   content: string;
   timestamp: Date;
   sources?: ChatSource[];
+  summary?: string;
+  findings?: string[];
+  activity?: string[];
+  agent?: AgentType;
+  routing?: AgentRoutingInfo;
+  verification?: AgentVerification;
 }
 
 export interface DocumentInfo {

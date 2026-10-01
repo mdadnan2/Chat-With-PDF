@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Trash2, Loader2, Plus } from "lucide-react";
+import { FileText, Trash2, Loader2, Plus, Check } from "lucide-react";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -47,7 +45,7 @@ export function DocumentList({ onSelect }: { onSelect?: () => void }) {
       toast.success("Document deleted");
       if (currentDoc?.id === pendingDelete.id) {
         setDocument(null);
-        router.replace("/upload");
+        router.replace("/chat");
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete document");
@@ -69,11 +67,10 @@ export function DocumentList({ onSelect }: { onSelect?: () => void }) {
 
   if (!documents?.length) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-center px-2">
-        <FileText className="h-8 w-8 text-muted-foreground/40 mb-2" />
-        <p className="text-xs text-muted-foreground">No documents yet</p>
-        <Button asChild variant="outline" size="sm" className="mt-3 gap-1.5">
-          <Link href="/upload"><Plus className="h-3.5 w-3.5" />Upload</Link>
+      <div className="space-y-3 px-2 py-4">
+        <p className="text-xs leading-relaxed text-muted-foreground">Upload a PDF to start a conversation.</p>
+        <Button asChild variant="outline" size="sm" className="w-full gap-1.5">
+          <Link href="/upload"><Plus className="h-3.5 w-3.5" />Upload PDF</Link>
         </Button>
       </div>
     );
@@ -81,52 +78,35 @@ export function DocumentList({ onSelect }: { onSelect?: () => void }) {
 
   return (
     <>
-      <div className="space-y-1.5">
-        <AnimatePresence>
-          {documents.map((doc) => {
-            const isActive = currentDoc?.id === doc.id;
-            return (
-              <motion.div
-                key={doc.id}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                className={`group relative flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all ${isActive
-                    ? "border-primary/40 bg-primary/5"
-                    : "border-transparent hover:border-border hover:bg-muted/50"
-                  }`}
+      <div role="list" className="space-y-1">
+        {documents.map((doc) => {
+          const isActive = currentDoc?.id === doc.id;
+          return (
+            <div key={doc.id} role="listitem" className="group flex items-center gap-1">
+              <button
+                type="button"
                 onClick={() => handleSelect(doc)}
+                aria-current={isActive ? "true" : undefined}
+                className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isActive
+                  ? "bg-primary/10 text-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <FileText className="h-4 w-4 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-foreground truncate leading-tight">
-                    {doc.original_filename}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {new Date(doc.uploaded_at).toLocaleDateString()}
-                  </p>
-                  {isActive && (
-                    <Badge variant="success" className="mt-1 text-[10px] px-1.5 py-0">
-                      Active
-                    </Badge>
-                  )}
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPendingDelete(doc);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-0.5 rounded"
-                  aria-label="Delete document"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+                <FileText className="h-4 w-4 shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-xs font-medium" title={doc.original_filename}>{doc.original_filename}</span>
+                {isActive && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingDelete(doc)}
+                className="rounded p-2 text-muted-foreground opacity-100 transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:opacity-0 lg:group-hover:opacity-100"
+                aria-label={`Delete ${doc.original_filename}`}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>

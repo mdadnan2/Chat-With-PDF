@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef } from "react";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 interface ChatInputProps {
@@ -14,37 +15,34 @@ interface ChatInputProps {
 }
 
 export function ChatInput({ value, onChange, onSubmit, isLoading, disabled }: ChatInputProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !isLoading && value.trim()) {
+      if (e.shiftKey) return;
       e.preventDefault();
       onSubmit();
     }
   };
 
   return (
-    <div className="relative flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 shadow-sm focus-within:ring-1 focus-within:ring-ring transition-shadow">
-      <input
+    <div className="flex items-end gap-2 rounded-xl border border-border bg-background p-2 shadow-sm transition-shadow focus-within:ring-2 focus-within:ring-ring/40">
+      <Textarea
         ref={inputRef}
-        type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Ask anything about your document..."
+        rows={Math.min(5, Math.max(1, value.split("\n").length))}
+        placeholder="Ask a question about this document..."
         disabled={disabled || isLoading}
-        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-h-10 max-h-36 flex-1 border-0 bg-transparent px-2 py-2 text-sm shadow-none focus-visible:ring-0 disabled:cursor-not-allowed"
         aria-label="Chat message input"
       />
       <Button
         onClick={onSubmit}
         disabled={!value.trim() || isLoading || disabled}
         size="icon"
-        className={cn("shrink-0 h-8 w-8 rounded-lg transition-all", !value.trim() && "opacity-50")}
+        className={cn("mb-0.5 h-9 w-9 shrink-0 rounded-lg", !value.trim() && "opacity-50")}
         aria-label="Send message"
       >
         {isLoading ? (

@@ -36,7 +36,7 @@ function LoginForm() {
     try {
       await login({ username: data.email, password: data.password });
       toast.success("Welcome back!");
-      router.replace("/upload");
+      router.replace("/chat");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Login failed");
     }

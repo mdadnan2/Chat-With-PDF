@@ -1,66 +1,52 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Zap, Shield, Brain, MessageSquare, FileSearch, Sparkles } from "lucide-react";
+import { Zap, Shield, MessageSquare, FileSearch } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 const features = [
   {
-    icon: Brain,
-    title: "RAG-Powered Intelligence",
-    description: "Retrieval-Augmented Generation ensures answers are grounded in your document's actual content.",
-    color: "text-violet-500",
-    bg: "bg-violet-500/10",
-  },
-  {
     icon: Zap,
-    title: "Instant Answers",
-    description: "Get precise answers in seconds. No more scrolling through hundreds of pages manually.",
+    title: "Grounded answers",
+    description: "Get clear responses based on the content of your document.",
     color: "text-amber-500",
     bg: "bg-amber-500/10",
   },
   {
     icon: MessageSquare,
-    title: "Natural Conversation",
-    description: "Ask follow-up questions naturally. The AI maintains context throughout your conversation.",
+    title: "Natural conversation",
+    description: "Ask follow-up questions in plain language as you explore a document.",
     color: "text-blue-500",
     bg: "bg-blue-500/10",
   },
   {
     icon: FileSearch,
-    title: "Deep Document Analysis",
-    description: "Semantic search across your entire document finds relevant information even with different wording.",
+    title: "Document analysis",
+    description: "Find relevant details across your document, even when you phrase a question differently.",
     color: "text-emerald-500",
     bg: "bg-emerald-500/10",
   },
   {
     icon: Shield,
-    title: "Accurate & Reliable",
-    description: "Answers are sourced directly from your document, minimizing hallucinations.",
+    title: "Sources and verification",
+    description: "Review the document sections behind an answer and see when evidence is limited.",
     color: "text-rose-500",
     bg: "bg-rose-500/10",
-  },
-  {
-    icon: Sparkles,
-    title: "Gemini AI Backend",
-    description: "Powered by Google's Gemini model for state-of-the-art language understanding.",
-    color: "text-primary",
-    bg: "bg-primary/10",
   },
 ];
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="py-24 sm:py-32">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
+    <section id="features" className="py-16 sm:py-20">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-10 text-center sm:mb-12">
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-sm font-medium text-primary mb-3"
           >
-            Everything you need
+            Made for document questions
           </motion.p>
           <motion.h2
             initial={{ opacity: 0, y: 16 }}
@@ -69,7 +55,7 @@ export function FeaturesSection() {
             transition={{ delay: 0.1 }}
             className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
           >
-            Powerful features, simple experience
+            A simple way to explore your PDFs
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 16 }}
@@ -78,11 +64,11 @@ export function FeaturesSection() {
             transition={{ delay: 0.2 }}
             className="mt-4 text-muted-foreground max-w-xl mx-auto"
           >
-            Everything you need to extract insights from your documents instantly.
+            Ask, explore, and verify information in one focused chat.
           </motion.p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((feature, i) => (
             <motion.div
               key={feature.title}
@@ -91,8 +77,8 @@ export function FeaturesSection() {
               viewport={{ once: true }}
               transition={{ delay: i * 0.08, duration: 0.4 }}
             >
-              <Card className="group h-full hover:shadow-md hover:border-primary/20 transition-all duration-300">
-                <CardContent className="p-6">
+              <Card className="h-full border-border/80 shadow-none transition-colors duration-200 hover:border-primary/30">
+                <CardContent className="p-5">
                   <div className={`mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl ${feature.bg}`}>
                     <feature.icon className={`h-5 w-5 ${feature.color}`} />
                   </div>
@@ -102,6 +88,12 @@ export function FeaturesSection() {
               </Card>
             </motion.div>
           ))}
+        </div>
+        <div className="mx-auto mt-12 max-w-3xl border-t border-border pt-8 text-center">
+          <h3 className="text-base font-semibold">The right specialist, automatically</h3>
+          <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            Chat-With-PDF selects the best specialist for each question: Research, Summary, Analyst, Document, or Verification. You can simply ask; routing happens automatically.
+          </p>
         </div>
       </div>
     </section>

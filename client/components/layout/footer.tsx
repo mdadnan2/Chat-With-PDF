@@ -16,7 +16,7 @@ export function Footer() {
           </Link>
 
           <p className="text-xs text-muted-foreground text-center">
-            Built with Next.js, FastAPI & Gemini AI. Ask anything about your documents.
+            Ask questions and explore your documents.
           </p>
 
           <p className="text-xs text-muted-foreground">

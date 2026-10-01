@@ -19,7 +19,7 @@ export function Navbar() {
       className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl"
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2.5 group">
+        <Link href="/" className="group flex items-center gap-2.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
             <FileText className="h-4 w-4 text-primary" />
           </div>
@@ -29,10 +29,10 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-          <Link href="/#features" className="hover:text-foreground transition-colors">
+          <Link href="/#features" className="rounded-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             Features
           </Link>
-          <Link href="/#how-it-works" className="hover:text-foreground transition-colors">
+          <Link href="/#how-it-works" className="rounded-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             How it works
           </Link>
         </nav>
