@@ -16,42 +16,88 @@ from app.services.provider_interfaces import (
     RerankerProvider,
 )
 
+_RETRYABLE_CATEGORIES = {
+    ProviderErrorCategory.RATE_LIMIT,
+    ProviderErrorCategory.QUOTA,
+    ProviderErrorCategory.TIMEOUT,
+    ProviderErrorCategory.UNAVAILABLE,
+}
+
+
+# ---------------------------------------------------------------------------
+# Public factory functions
+# ---------------------------------------------------------------------------
+
 
 def get_generation_provider(config=settings) -> GenerationProvider:
-    primary_name = config.generation_provider.strip().lower()
-    primary = _build_generation_provider(primary_name, config)
-
-    fallback_name = config.generation_fallback_provider.strip().lower()
-    if not fallback_name:
-        return primary
-    if fallback_name == primary_name:
-        raise ProviderError(
-            ProviderErrorCategory.CONFIGURATION_AUTHENTICATION,
-            provider=fallback_name,
-            public_message="The generation fallback must differ from the primary provider.",
-        )
-    return FallbackGenerationProvider(
-        primary,
-        _build_generation_provider(fallback_name, config),
-    )
+    chain = _build_generation_chain(config)
+    if len(chain) == 1:
+        return chain[0]
+    if len(chain) == 2:
+        return FallbackGenerationProvider(chain[0], chain[1])
+    return ChainedGenerationProvider(chain)
 
 
 def get_reranker_provider(config=settings) -> RerankerProvider:
-    name = config.reranker_provider.strip().lower()
-    timeout = config.provider_timeout_seconds
+    chain = _build_reranker_chain(config)
+    if len(chain) == 1:
+        return chain[0]
+    return FallbackRerankerProvider(chain)
 
-    if name == "gemini":
-        client = genai.Client(
-            api_key=_required(config.google_api_key, "GOOGLE_API_KEY", name)
-        )
-        return GeminiRerankerProvider(client)
-    if name == "cohere":
-        return CohereRerankerProvider(
-            api_key=_required(config.cohere_api_key, "COHERE_API_KEY", name),
-            model=_required(config.cohere_rerank_model, "COHERE_RERANK_MODEL", name),
-            timeout=timeout,
-        )
-    raise _unsupported_provider(name, "reranker")
+
+# ---------------------------------------------------------------------------
+# Chain builders
+# ---------------------------------------------------------------------------
+
+
+def _build_generation_chain(config) -> list[GenerationProvider]:
+    names: list[str] = []
+    for raw in (
+        config.generation_provider,
+        getattr(config, "generation_fallback_provider", ""),
+        getattr(config, "generation_secondary_fallback_provider", ""),
+    ):
+        name = (raw or "").strip().lower()
+        if not name:
+            break
+        if name in names:
+            raise ProviderError(
+                ProviderErrorCategory.CONFIGURATION_AUTHENTICATION,
+                provider=name,
+                public_message=(
+                    f"Duplicate provider '{name}' in the generation chain. "
+                    "Each provider must appear at most once."
+                ),
+            )
+        names.append(name)
+    return [_build_generation_provider(n, config) for n in names]
+
+
+def _build_reranker_chain(config) -> list[RerankerProvider]:
+    names: list[str] = []
+    for raw in (
+        config.reranker_provider,
+        getattr(config, "reranker_fallback_provider", ""),
+    ):
+        name = (raw or "").strip().lower()
+        if not name:
+            break
+        if name in names:
+            raise ProviderError(
+                ProviderErrorCategory.CONFIGURATION_AUTHENTICATION,
+                provider=name,
+                public_message=(
+                    f"Duplicate provider '{name}' in the reranker chain. "
+                    "Each provider must appear at most once."
+                ),
+            )
+        names.append(name)
+    return [_build_reranker_provider(n, config) for n in names]
+
+
+# ---------------------------------------------------------------------------
+# Individual provider constructors
+# ---------------------------------------------------------------------------
 
 
 def _build_generation_provider(name: str, config) -> GenerationProvider:
@@ -74,6 +120,27 @@ def _build_generation_provider(name: str, config) -> GenerationProvider:
             timeout=timeout,
         )
     raise _unsupported_provider(name, "generation")
+
+
+def _build_reranker_provider(name: str, config) -> RerankerProvider:
+    timeout = config.provider_timeout_seconds
+    if name == "gemini":
+        client = genai.Client(
+            api_key=_required(config.google_api_key, "GOOGLE_API_KEY", name)
+        )
+        return GeminiRerankerProvider(client)
+    if name == "cohere":
+        return CohereRerankerProvider(
+            api_key=_required(config.cohere_api_key, "COHERE_API_KEY", name),
+            model=_required(config.cohere_rerank_model, "COHERE_RERANK_MODEL", name),
+            timeout=timeout,
+        )
+    raise _unsupported_provider(name, "reranker")
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 
 def _required(value: str, variable_name: str, provider: str) -> str:
@@ -118,36 +185,78 @@ def _generate_result(provider: GenerationProvider, prompt: str) -> GenerationRes
     )
 
 
-class FallbackGenerationProvider:
-    def __init__(
-        self,
-        primary: GenerationProvider,
-        fallback: GenerationProvider,
-    ):
-        self.primary = primary
-        self.fallback = fallback
-        self.provider_name = getattr(primary, "provider_name", "configured")
-        self.model_name = getattr(primary, "model_name", None)
+# ---------------------------------------------------------------------------
+# Ordered-chain providers
+# ---------------------------------------------------------------------------
+
+
+class ChainedGenerationProvider:
+    """Tries providers in order, falling back only on retryable errors."""
+
+    def __init__(self, providers: list[GenerationProvider]):
+        assert providers, "ChainedGenerationProvider requires at least one provider"
+        self.providers = providers
+        self.provider_name = getattr(providers[0], "provider_name", "configured")
+        self.model_name = getattr(providers[0], "model_name", None)
 
     def generate(self, prompt: str) -> str:
         return self.generate_with_metadata(prompt).text
 
     def generate_with_metadata(self, prompt: str) -> GenerationResult:
-        primary_error_category = None
-        try:
-            return _generate_result(self.primary, prompt)
-        except ProviderError as primary_error:
-            if not primary_error.retryable:
-                raise
-            primary_error_category = primary_error.category.value
+        first_error_category: str | None = None
+        for provider in self.providers:
+            try:
+                result = _generate_result(provider, prompt)
+                if first_error_category is not None:
+                    return replace(
+                        result,
+                        fallback_used=True,
+                        provider_error_category=first_error_category,
+                    )
+                return result
+            except ProviderError as exc:
+                if exc.category not in _RETRYABLE_CATEGORIES:
+                    raise
+                if first_error_category is None:
+                    first_error_category = exc.category.value
+                last_exc = exc
+        raise last_exc  # all providers exhausted
 
-        try:
-            fallback_result = _generate_result(self.fallback, prompt)
-        except ProviderError:
-            raise
 
-        return replace(
-            fallback_result,
-            fallback_used=True,
-            provider_error_category=primary_error_category,
-        )
+# Backward-compatible alias so existing tests importing FallbackGenerationProvider
+# continue to work.  The two-provider case is a degenerate chain of length 2.
+class FallbackGenerationProvider(ChainedGenerationProvider):
+    def __init__(
+        self,
+        primary: GenerationProvider,
+        fallback: GenerationProvider,
+    ):
+        super().__init__([primary, fallback])
+        self.primary = primary
+        self.fallback = fallback
+
+
+class FallbackRerankerProvider:
+    """Tries rerankers in order, falling back only on retryable errors."""
+
+    def __init__(self, providers: list[RerankerProvider]):
+        assert providers, "FallbackRerankerProvider requires at least one provider"
+        self.providers = providers
+        self.provider_name = getattr(providers[0], "provider_name", "configured")
+        self.model_name = getattr(providers[0], "model_name", None)
+
+    def rerank_with_info(self, question: str, chunks):
+        """Returns (reranked_chunks, actual_provider_name, actual_model_name)."""
+        for provider in self.providers:
+            try:
+                result = provider.rerank(question, chunks)
+                return result, getattr(provider, "provider_name", None), getattr(provider, "model_name", None)
+            except ProviderError as exc:
+                if exc.category not in _RETRYABLE_CATEGORIES:
+                    raise
+                last_exc = exc
+        raise last_exc
+
+    def rerank(self, question: str, chunks):
+        result, _, _ = self.rerank_with_info(question, chunks)
+        return result

@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     generation_provider: str = "gemini"
     reranker_provider: str = "gemini"
     generation_fallback_provider: str = ""
+    generation_secondary_fallback_provider: str = ""
+    reranker_fallback_provider: str = ""
 
     openrouter_api_key: str = ""
     openrouter_model: str = ""

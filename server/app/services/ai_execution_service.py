@@ -53,6 +53,7 @@ class ExecutionMetadata:
     reranker_provider: str | None = None
     reranker_model: str | None = None
     fallback_used: bool = False
+    reranker_fallback_used: bool = False
     provider_error_category: str | None = None
     generation_latency_ms: float | None = None
     reranking_latency_ms: float | None = None
@@ -216,7 +217,17 @@ class AIExecutionService:
             context.metadata.reranker_model = getattr(self.reranker, "model_name", None)
             rerank_started = perf_counter()
             try:
-                selected = self.reranker.rerank(question, retrieved)
+                rerank_with_info = getattr(self.reranker, "rerank_with_info", None)
+                if callable(rerank_with_info):
+                    selected, actual_provider, actual_model = rerank_with_info(
+                        question, retrieved
+                    )
+                    if actual_provider != context.metadata.reranker_provider:
+                        context.metadata.reranker_provider = actual_provider
+                        context.metadata.reranker_model = actual_model
+                        context.metadata.reranker_fallback_used = True
+                else:
+                    selected = self.reranker.rerank(question, retrieved)
             except ProviderError as exc:
                 context.metadata.reranking_failures = 1
                 context.metadata.provider_error_category = exc.category.value

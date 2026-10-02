@@ -24,7 +24,7 @@ export function HeroSection() {
           className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/8 px-4 py-1.5 text-sm font-medium text-primary"
         >
           <Sparkles className="h-3.5 w-3.5" />
-          Answers grounded in your documents
+          AI-powered multi-agent document assistant
         </motion.div>
 
         {/* Headline */}
@@ -47,7 +47,7 @@ export function HeroSection() {
           transition={{ delay: delays[2], duration: 0.5 }}
           className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground leading-relaxed"
         >
-          Upload a PDF and ask questions in plain language. Get clear answers grounded in the document, with sources when you need to verify them.
+          Upload a PDF and ask questions in plain language. Get answers grounded in your document, with automatic specialist selection, source references, and claim verification.
         </motion.p>
 
         {/* CTAs */}
@@ -63,7 +63,7 @@ export function HeroSection() {
             </Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="gap-2">
-            <Link href="/#how-it-works">See how it works</Link>
+            <Link href="/#how-it-works">See How It Works</Link>
           </Button>
         </motion.div>
 
